@@ -31,7 +31,7 @@ export default function ComboSection() {
   ];
 
   return (
-    <section className="bg-gradient-to-r from-pink-500 to-pink-600" style={{ padding: '60px 16px' }}>
+    <section id="combos" className="bg-gradient-to-r from-pink-500 to-pink-600" style={{ padding: '60px 16px' }}>
       <div className="container mx-auto" style={{ padding: '0 16px' }}>
         <div className="grid grid-cols-1 lg:grid-cols-2 items-center" style={{ gap: '3rem' }}>
           {/* Left Content */}

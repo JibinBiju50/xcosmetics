@@ -50,7 +50,7 @@ export default function FeedbackSection() {
     const allImages = [...feedbackImages, ...feedbackImages];
 
     return (
-        <section className="bg-white" style={{ padding: '60px 0' }}>
+        <section id="reviews" className="bg-white" style={{ padding: '60px 0' }}>
             {/* Title */}
             <div className="container mx-auto px-4 mb-6">
                 <h2 className="text-xl md:text-3xl font-bold text-gray-900 text-center">Customer Feedback</h2>

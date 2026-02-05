@@ -19,8 +19,8 @@ const categories = [
   { value: 'combo', label: 'Combos' },
 ];
 
-export default function ProductsClient({ 
-  products, 
+export default function ProductsClient({
+  products,
   initialCategory = 'all',
   initialSearch = ''
 }: ProductsClientProps) {
@@ -31,13 +31,13 @@ export default function ProductsClient({
   const handleAddToCart = (product: Product) => {
     const cart = JSON.parse(localStorage.getItem('cart') || '[]');
     const existingIndex = cart.findIndex((item: { product: Product }) => item.product.id === product.id);
-    
+
     if (existingIndex > -1) {
       cart[existingIndex].quantity += 1;
     } else {
       cart.push({ product, quantity: 1 });
     }
-    
+
     localStorage.setItem('cart', JSON.stringify(cart));
     window.dispatchEvent(new Event('cartUpdated'));
   };
@@ -46,11 +46,11 @@ export default function ProductsClient({
     return products.filter((product) => {
       // Category filter
       const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
-      
+
       // Search filter
       const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           product.description?.toLowerCase().includes(searchQuery.toLowerCase());
-      
+        product.description?.toLowerCase().includes(searchQuery.toLowerCase());
+
       return matchesCategory && matchesSearch;
     });
   }, [products, selectedCategory, searchQuery]);
@@ -63,7 +63,7 @@ export default function ProductsClient({
           <h1 className="text-2xl font-bold text-gray-900 mb-4 md:text-3xl">
             Shop All Products
           </h1>
-          
+
           {/* Search and Filter Bar */}
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             {/* Search */}
@@ -101,11 +101,10 @@ export default function ProductsClient({
                 <button
                   key={cat.value}
                   onClick={() => setSelectedCategory(cat.value)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    selectedCategory === cat.value
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${selectedCategory === cat.value
                       ? 'bg-pink-500 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                    }`}
                 >
                   {cat.label}
                 </button>
@@ -123,11 +122,10 @@ export default function ProductsClient({
                     setSelectedCategory(cat.value);
                     setShowFilters(false);
                   }}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                    selectedCategory === cat.value
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${selectedCategory === cat.value
                       ? 'bg-pink-500 text-white'
                       : 'bg-gray-100 text-gray-700'
-                  }`}
+                    }`}
                 >
                   {cat.label}
                 </button>
@@ -146,10 +144,10 @@ export default function ProductsClient({
         </p>
 
         {filteredProducts.length > 0 ? (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
             {filteredProducts.map((product) => (
-              <ProductCard 
-                key={product.id} 
+              <ProductCard
+                key={product.id}
                 product={product}
                 onAddToCart={handleAddToCart}
               />

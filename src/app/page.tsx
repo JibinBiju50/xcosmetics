@@ -32,7 +32,7 @@ export default async function HomePage() {
     const discountA = ((a.original_price - a.offer_price) / a.original_price) * 100;
     const discountB = ((b.original_price - b.offer_price) / b.original_price) * 100;
     return discountB - discountA;
-  }).slice(0, 4); // Get top 4
+  }).slice(0, 6); // Get top 6
 
   return (
     <>

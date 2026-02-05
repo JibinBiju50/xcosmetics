@@ -19,7 +19,7 @@ export default function BluuSection() {
             style={{ height: '350px', maxWidth: '500px', margin: '0 auto' }}
           >
             <Image
-              src="/images/cream/cream-bluu-1.jpeg"
+              src="/images/cream/cream-bluu-men.jpeg"
               alt="Bluu Whitening Cream"
               fill
               className="object-cover"

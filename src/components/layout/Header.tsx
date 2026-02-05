@@ -64,6 +64,24 @@ export default function Header() {
             >
               Shop
             </Link>
+            <Link
+              href="/#best-deals"
+              className="text-white hover:text-pink-200 transition-colors font-medium"
+            >
+              Best Deals
+            </Link>
+            <Link
+              href="/#combos"
+              className="text-white hover:text-pink-200 transition-colors font-medium"
+            >
+              Combos
+            </Link>
+            <Link
+              href="/#reviews"
+              className="text-white hover:text-pink-200 transition-colors font-medium"
+            >
+              Reviews
+            </Link>
           </nav>
 
           {/* Right Icons */}
@@ -104,6 +122,27 @@ export default function Header() {
                 onClick={() => setIsMenuOpen(false)}
               >
                 Shop
+              </Link>
+              <Link
+                href="/#best-deals"
+                className="text-white hover:text-pink-200 transition-colors font-medium"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Best Deals
+              </Link>
+              <Link
+                href="/#combos"
+                className="text-white hover:text-pink-200 transition-colors font-medium"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Combos
+              </Link>
+              <Link
+                href="/#reviews"
+                className="text-white hover:text-pink-200 transition-colors font-medium"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Reviews
               </Link>
             </div>
           </nav>

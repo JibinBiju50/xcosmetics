@@ -25,7 +25,7 @@ export default function BestDeals({ products }: BestDealsProps) {
   };
 
   return (
-    <section style={{ padding: '60px 16px' }} className="bg-white">
+    <section id="best-deals" style={{ padding: '60px 16px' }} className="bg-white">
       <div className="container mx-auto" style={{ padding: '0 8px' }}>
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between" style={{ marginBottom: '24px', gap: '12px' }}>
@@ -39,8 +39,8 @@ export default function BestDeals({ products }: BestDealsProps) {
         </div>
 
         {/* Product Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4" style={{ gap: '16px' }}>
-          {products.slice(0, 4).map((product) => (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6" style={{ gap: '12px' }}>
+          {products.slice(0, 6).map((product) => (
             <ProductCard
               key={product.id}
               product={product}

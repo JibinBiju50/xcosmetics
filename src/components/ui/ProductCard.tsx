@@ -19,24 +19,23 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
 
   return (
     <div
-      className="bg-white rounded-xl shadow-md group relative"
-      style={{ padding: '14px' }}
+      className="bg-white rounded-xl shadow-md group relative overflow-hidden"
     >
       {/* Discount Badge */}
       {discount > 0 && (
         <span
           className="absolute bg-pink-500 text-white rounded-full text-xs font-bold z-20 shadow-md"
-          style={{ top: '16px', left: '16px', padding: '6px 12px' }}
+          style={{ top: '8px', left: '8px', padding: '4px 10px' }}
         >
           {discount}% OFF
         </span>
       )}
 
-      {/* Image */}
+      {/* Image - Full width, no padding */}
       <Link href={productUrl}>
         <div
-          className="relative overflow-hidden rounded-lg"
-          style={{ height: '180px', marginBottom: '12px' }}
+          className="relative overflow-hidden"
+          style={{ height: '180px' }}
         >
           <Image
             src={product.image_url || '/images/placeholder.jpg'}
@@ -47,8 +46,8 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
         </div>
       </Link>
 
-      {/* Content */}
-      <div style={{ padding: '0 4px' }}>
+      {/* Content - With padding */}
+      <div style={{ padding: '12px' }}>
         {/* Category */}
         <p
           className="text-xs text-gray-500 uppercase tracking-wider font-medium"
@@ -86,22 +85,15 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
         </div>
 
         {/* Actions */}
-        <div className="flex gap-2" style={{ paddingTop: '6px' }}>
+        <div style={{ paddingTop: '6px' }}>
           <button
             onClick={() => onAddToCart?.(product)}
-            className="flex-1 flex items-center justify-center gap-1.5 bg-pink-500 hover:bg-pink-600 text-white rounded-lg transition-colors text-xs font-semibold"
+            className="w-full flex items-center justify-center gap-1.5 bg-pink-500 hover:bg-pink-600 text-white rounded-lg transition-colors text-xs font-semibold"
             style={{ padding: '10px 12px' }}
           >
             <ShoppingCart size={14} />
             Add to Cart
           </button>
-          <Link
-            href={productUrl}
-            className="border-2 border-pink-500 text-pink-500 hover:bg-pink-50 rounded-lg transition-colors text-xs font-semibold flex items-center justify-center"
-            style={{ padding: '10px 14px' }}
-          >
-            View
-          </Link>
         </div>
       </div>
     </div>
