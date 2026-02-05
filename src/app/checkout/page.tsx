@@ -52,9 +52,24 @@ export default function CheckoutPage() {
     0
   );
 
-  // Shipping charges based on courier
-  const shippingCharge = courierService === 'dtdc' ? 60 : 40;
+  // Shipping charges based on payment method and courier
+  const getShippingCharge = () => {
+    if (paymentMethod === 'cod') {
+      return 100; // COD only has Postal with ₹100
+    }
+    // Online payment
+    return courierService === 'dtdc' ? 60 : 0; // DTDC ₹60, Postal free
+  };
+
+  const shippingCharge = getShippingCharge();
   const total = subtotal + shippingCharge;
+
+  // Auto-set courier to postal when COD is selected
+  useEffect(() => {
+    if (paymentMethod === 'cod') {
+      setCourierService('postal');
+    }
+  }, [paymentMethod]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -253,60 +268,7 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* Courier Selection */}
-              <div className="bg-white rounded-2xl shadow-lg" style={{ padding: '28px' }}>
-                <h2
-                  className="text-lg font-bold text-gray-900 flex items-center gap-2"
-                  style={{ marginBottom: '20px' }}
-                >
-                  <Truck size={20} />
-                  Shipping Method
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: '16px' }}>
-                  <label
-                    className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-colors ${courierService === 'dtdc'
-                      ? 'border-pink-500 bg-pink-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                  >
-                    <input
-                      type="radio"
-                      name="courier"
-                      value="dtdc"
-                      checked={courierService === 'dtdc'}
-                      onChange={() => setCourierService('dtdc')}
-                      className="text-pink-500"
-                    />
-                    <div className="flex-1">
-                      <p className="font-semibold">DTDC Express</p>
-                      <p className="text-sm text-gray-500">3-5 business days</p>
-                    </div>
-                    <span className="font-semibold">₹60</span>
-                  </label>
-                  <label
-                    className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-colors ${courierService === 'postal'
-                      ? 'border-pink-500 bg-pink-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                  >
-                    <input
-                      type="radio"
-                      name="courier"
-                      value="postal"
-                      checked={courierService === 'postal'}
-                      onChange={() => setCourierService('postal')}
-                      className="text-pink-500"
-                    />
-                    <div className="flex-1">
-                      <p className="font-semibold">India Post</p>
-                      <p className="text-sm text-gray-500">7-10 business days</p>
-                    </div>
-                    <span className="font-semibold">₹40</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Payment Method */}
+              {/* Payment Method - FIRST */}
               <div className="bg-white rounded-2xl shadow-lg" style={{ padding: '28px' }}>
                 <h2
                   className="text-lg font-bold text-gray-900"
@@ -352,11 +314,79 @@ export default function CheckoutPage() {
                     <Banknote size={24} className="text-gray-600" />
                     <div>
                       <p className="font-semibold">Cash on Delivery</p>
-                      <p className="text-xs text-gray-500">Pay when you receive</p>
+                      <p className="text-xs text-gray-500">+₹100 shipping (Postal only)</p>
                     </div>
                   </label>
                 </div>
               </div>
+
+              {/* Courier Selection - Only for Online Payment */}
+              {paymentMethod === 'online' && (
+                <div className="bg-white rounded-2xl shadow-lg" style={{ padding: '28px' }}>
+                  <h2
+                    className="text-lg font-bold text-gray-900 flex items-center gap-2"
+                    style={{ marginBottom: '20px' }}
+                  >
+                    <Truck size={20} />
+                    Shipping Method
+                  </h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: '16px' }}>
+                    <label
+                      className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-colors ${courierService === 'dtdc'
+                        ? 'border-pink-500 bg-pink-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                    >
+                      <input
+                        type="radio"
+                        name="courier"
+                        value="dtdc"
+                        checked={courierService === 'dtdc'}
+                        onChange={() => setCourierService('dtdc')}
+                        className="text-pink-500"
+                      />
+                      <div className="flex-1">
+                        <p className="font-semibold">DTDC Express</p>
+                        <p className="text-sm text-gray-500">3-5 business days</p>
+                      </div>
+                      <span className="font-semibold">₹60</span>
+                    </label>
+                    <label
+                      className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-colors ${courierService === 'postal'
+                        ? 'border-pink-500 bg-pink-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                    >
+                      <input
+                        type="radio"
+                        name="courier"
+                        value="postal"
+                        checked={courierService === 'postal'}
+                        onChange={() => setCourierService('postal')}
+                        className="text-pink-500"
+                      />
+                      <div className="flex-1">
+                        <p className="font-semibold">India Post</p>
+                        <p className="text-sm text-gray-500">7-10 business days</p>
+                      </div>
+                      <span className="font-semibold text-green-600">FREE</span>
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {/* COD Shipping Info */}
+              {paymentMethod === 'cod' && (
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl" style={{ padding: '20px' }}>
+                  <div className="flex items-center gap-3">
+                    <Truck size={20} className="text-amber-600" />
+                    <div>
+                      <p className="font-semibold text-amber-800">Shipping via India Post</p>
+                      <p className="text-sm text-amber-700">COD orders are shipped via Postal service (7-10 days) with ₹100 shipping charge</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Order Summary */}

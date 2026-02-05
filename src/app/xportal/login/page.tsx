@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
 import { Lock, Mail, Eye, EyeOff } from 'lucide-react';
 
@@ -91,6 +92,15 @@ export default function AdminLoginPage() {
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
+          </div>
+
+          <div className="text-right">
+            <Link
+              href="/xportal/forgot-password"
+              className="text-sm text-pink-500 hover:text-pink-600"
+            >
+              Forgot Password?
+            </Link>
           </div>
 
           <button
