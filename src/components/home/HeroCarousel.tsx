@@ -16,7 +16,7 @@ const slides = [
     showContent: true,
   },
   {
-    imageMobile: '/images/Homepage_HeroBanner_images/hero1_portrait.png',
+    imageMobile: '/images/Homepage_HeroBanner_images/hero1_portrait.PNG',
     imageDesktop: '/images/Homepage_HeroBanner_images/hero1_landscape.png',
     headline: '',
     subtext: '',
@@ -25,7 +25,7 @@ const slides = [
     showContent: false,
   },
   {
-    imageMobile: '/images/Homepage_HeroBanner_images/hero2_portrait.jpg',
+    imageMobile: '/images/Homepage_HeroBanner_images/hero2_portrait.JPG',
     imageDesktop: '/images/Homepage_HeroBanner_images/hero2_landscape.png',
     headline: '',
     subtext: '',
@@ -34,7 +34,7 @@ const slides = [
     showContent: false,
   },
   {
-    imageMobile: '/images/Homepage_HeroBanner_images/hero3_portrait.png',
+    imageMobile: '/images/Homepage_HeroBanner_images/hero3_portrait.PNG',
     imageDesktop: '/images/Homepage_HeroBanner_images/hero3_landscape.png',
     headline: '',
     subtext: '',
@@ -43,7 +43,7 @@ const slides = [
     showContent: false,
   },
   {
-    imageMobile: '/images/Homepage_HeroBanner_images/hero4_portrait.png',
+    imageMobile: '/images/Homepage_HeroBanner_images/hero4_portrait.PNG',
     imageDesktop: '/images/Homepage_HeroBanner_images/hero4_landscape.png',
     headline: '',
     subtext: '',
