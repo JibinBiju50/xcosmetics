@@ -104,8 +104,18 @@ export default function CheckoutPage() {
 
       if (response.ok) {
         if (paymentMethod === 'online') {
-          // Redirect to Cashfree payment
-          window.location.href = data.payment_url;
+          // Check if payment URL exists
+          if (data.payment_url) {
+            // Redirect to Cashfree payment
+            window.location.href = data.payment_url;
+          } else {
+            // Payment URL not available - show error and redirect to confirmation
+            console.error('Payment URL not received:', data);
+            alert('Payment gateway temporarily unavailable. Your order has been placed as COD.');
+            localStorage.removeItem('cart');
+            window.dispatchEvent(new Event('cartUpdated'));
+            router.push(`/order-confirmation/${data.order_id}`);
+          }
         } else {
           // COD - go to confirmation
           localStorage.removeItem('cart');

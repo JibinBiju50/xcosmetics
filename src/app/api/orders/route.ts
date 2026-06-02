@@ -102,9 +102,13 @@ export async function POST(request: NextRequest) {
           courierService: courier_service,
         });
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const orderData = response.data as any;
+
         return NextResponse.json({
           order_id: orderId,
-          payment_session_id: response.data?.payment_session_id,
+          payment_url: orderData?.payment_link,
+          payment_session_id: orderData?.payment_session_id,
         });
       } catch (cashfreeError) {
         console.error('Cashfree error:', cashfreeError);

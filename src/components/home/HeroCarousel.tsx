@@ -16,23 +16,42 @@ const slides = [
     showContent: true,
   },
   {
-    imageMobile: '/images/Homepage_HeroBanner_images/boy_with_cream_mobile.jpeg',
-    imageDesktop: '/images/Homepage_HeroBanner_images/boy_with_cream_landscape.png',
+    imageMobile: '/images/Homepage_HeroBanner_images/hero1_portrait.png',
+    imageDesktop: '/images/Homepage_HeroBanner_images/hero1_landscape.png',
     headline: '',
     subtext: '',
     cta: '',
-    link: '/products',
+    link: '/products/face-cream',
     showContent: false,
   },
   {
-    imageMobile: '/images/Homepage_HeroBanner_images/Combo_offer_mobile.jpeg',
-    imageDesktop: '/images/Homepage_HeroBanner_images/Combo_offer_landscape.png',
+    imageMobile: '/images/Homepage_HeroBanner_images/hero2_portrait.jpg',
+    imageDesktop: '/images/Homepage_HeroBanner_images/hero2_landscape.png',
+    headline: '',
+    subtext: '',
+    cta: '',
+    link: '/products/face-cream',
+    showContent: false,
+  },
+  {
+    imageMobile: '/images/Homepage_HeroBanner_images/hero3_portrait.png',
+    imageDesktop: '/images/Homepage_HeroBanner_images/hero3_landscape.png',
     headline: '',
     subtext: '',
     cta: '',
     link: '/products?category=combo',
     showContent: false,
   },
+  {
+    imageMobile: '/images/Homepage_HeroBanner_images/hero4_portrait.png',
+    imageDesktop: '/images/Homepage_HeroBanner_images/hero4_landscape.png',
+    headline: '',
+    subtext: '',
+    cta: '',
+    link: '/products/face-cream',
+    showContent: false,
+  }
+
 ];
 
 export default function HeroCarousel() {
@@ -50,7 +69,7 @@ export default function HeroCarousel() {
   const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % slides.length);
 
   return (
-    <section className="relative h-[500px] md:h-[600px] overflow-hidden">
+    <section className="relative h-[500px] md:h-[620px] overflow-hidden">
       {slides.map((slide, index) => (
         <div
           key={index}
@@ -68,7 +87,7 @@ export default function HeroCarousel() {
             alt={slide.headline || `Slide ${index + 1}`}
             fill
             className="md:hidden"
-            style={{ objectFit: 'cover', objectPosition: 'center 20%' }}
+            style={{ objectFit: 'fill', objectPosition: 'center 20%' }}
             priority={index === 0}
           />
 
@@ -78,7 +97,7 @@ export default function HeroCarousel() {
             alt={slide.headline || `Slide ${index + 1}`}
             fill
             className="hidden md:block"
-            style={{ objectFit: 'cover', objectPosition: 'center 20%' }}
+            style={{ objectFit: 'fill', objectPosition: 'center 20%' }}
             priority={index === 0}
           />
 
