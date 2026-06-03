@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Terms of Service | xcosmetic',
-  description: 'Terms of Service for xcosmetic',
+  title: 'Terms of Service | creamXstore',
+  description: 'Terms of Service for creamXstore',
 };
 
 export default function Page() {

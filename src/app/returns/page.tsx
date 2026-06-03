@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Return Policy | xcosmetic',
-  description: 'Return Policy for xcosmetic',
+  title: 'Return Policy | creamXstore',
+  description: 'Return Policy for creamXstore',
 };
 
 export default function Page() {

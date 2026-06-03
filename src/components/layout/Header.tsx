@@ -42,7 +42,7 @@ export default function Header() {
           <Link href="/" className="flex items-center">
             <Image
               src="/images/logo/logo_bgremoved.png"
-              alt="xcosmetic"
+              alt="creamXstore"
               width={180}
               height={60}
               style={{ height: 'auto', maxHeight: '60px', width: 'auto' }}

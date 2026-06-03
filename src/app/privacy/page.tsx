@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy | xcosmetic',
-  description: 'Privacy Policy for xcosmetic',
+  title: 'Privacy Policy | creamXstore',
+  description: 'Privacy Policy for creamXstore',
 };
 
 export default function Page() {

@@ -16,11 +16,11 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "Xcosmetic - Premium Beauty Products",
+  title: "creamXstore - Premium Beauty Products",
   description: "Shop premium cosmetic and skincare products. Best deals on face creams, serums, hair oils, and more. Free shipping available.",
   keywords: "cosmetics, skincare, beauty products, face cream, hair oil, lip balm, sunscreen",
   openGraph: {
-    title: "Xcosmetic - Premium Beauty Products",
+    title: "creamXstore - Premium Beauty Products",
     description: "Shop premium cosmetic and skincare products with exclusive offers.",
     type: "website",
   },

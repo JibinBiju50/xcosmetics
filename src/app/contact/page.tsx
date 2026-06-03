@@ -2,8 +2,8 @@ import { Mail, MapPin, Building2, User } from 'lucide-react';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Contact Us | xcosmetic',
-  description: 'Get in touch with xcosmetic for your beauty product needs.',
+  title: 'Contact Us | creamXstore',
+  description: 'Get in touch with creamXstore for your beauty product needs.',
 };
 
 export default function ContactPage() {

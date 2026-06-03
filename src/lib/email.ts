@@ -44,7 +44,7 @@ export async function sendOrderConfirmation(data: OrderEmailData) {
     </head>
     <body>
       <div class="header">
-        <h1 style="margin: 0;">XCosmetic</h1>
+        <h1 style="margin: 0;">creamXstore</h1>
         <p style="margin: 10px 0 0;">Order Confirmation</p>
       </div>
       <div class="content">
@@ -98,7 +98,7 @@ export async function sendOrderConfirmation(data: OrderEmailData) {
         </p>
       </div>
       <div class="footer">
-        <p>© 2026 XCosmetic. All rights reserved.</p>
+        <p>© 2026 creamXstore. All rights reserved.</p>
       </div>
     </body>
     </html>
@@ -106,7 +106,7 @@ export async function sendOrderConfirmation(data: OrderEmailData) {
 
     try {
         await resend.emails.send({
-            from: 'XCosmetic <orders@creamxstore.in>',
+            from: 'creamXstore <orders@creamxstore.in>',
             to: data.customerEmail,
             subject: `Order Confirmed - ${data.orderId}`,
             html,
