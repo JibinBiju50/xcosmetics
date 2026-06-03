@@ -24,8 +24,9 @@ async function getProduct(slug: string): Promise<Product | null> {
   const product = data;
   if (product && product.slug === 'face-cream') {
     product.image_url = '/images/face_cream_creamx/cream_img1.PNG';
+    product.original_price = 899;
+    product.offer_price = 720;
     product.images = [
-      '/images/face_cream_creamx/cream_img1.PNG',
       '/images/face_cream_creamx/cream_img2.JPG',
       '/images/face_cream_creamx/cream_img3.JPG',
       '/images/face_cream_creamx/cream_img4.JPG'
@@ -45,6 +46,15 @@ Our cream has the best solution for,
 ▪️ dark circles 
 ▪️ anti pigmentation 
 ▪️ open pores`;
+  }
+
+  if (product && product.slug === 'combo-face-cream-offer') {
+    product.image_url = '/images/combo/combo1.PNG';
+    product.original_price = 1699;
+    product.offer_price = 1499;
+    product.images = [
+      '/images/combo/combo2.PNG'
+    ];
   }
 
   return product;

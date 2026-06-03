@@ -26,11 +26,23 @@ async function getProducts(): Promise<Product[]> {
   const faceCream = products.find(p => p.slug === 'face-cream');
   if (faceCream) {
     faceCream.image_url = '/images/face_cream_creamx/cream_img1.PNG';
+    faceCream.original_price = 899;
+    faceCream.offer_price = 720;
     faceCream.images = [
-      '/images/face_cream_creamx/cream_img1.PNG',
       '/images/face_cream_creamx/cream_img2.JPG',
       '/images/face_cream_creamx/cream_img3.JPG',
       '/images/face_cream_creamx/cream_img4.JPG'
+    ];
+  }
+
+  // Override face cream combo images
+  const faceCreamCombo = products.find(p => p.slug === 'combo-face-cream-offer');
+  if (faceCreamCombo) {
+    faceCreamCombo.image_url = '/images/combo/combo1.PNG';
+    faceCreamCombo.original_price = 1699;
+    faceCreamCombo.offer_price = 1499;
+    faceCreamCombo.images = [
+      '/images/combo/combo2.PNG'
     ];
   }
 

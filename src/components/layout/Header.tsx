@@ -41,7 +41,7 @@ export default function Header() {
           {/* Logo */}
           <Link href="/" className="flex items-center">
             <Image
-              src="/images/logo/logo.png"
+              src="/images/logo/logo_bgremoved.png"
               alt="xcosmetic"
               width={180}
               height={60}

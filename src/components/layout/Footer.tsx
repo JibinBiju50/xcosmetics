@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function Footer() {
   return (
@@ -7,9 +8,15 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div>
-            <h3 className="text-xl font-bold text-white mb-4">
-              <span className="text-pink-400">x</span>cosmetic
-            </h3>
+            <Link href="/" className="inline-block mb-4">
+              <Image
+                src="/images/logo/logo_bgremoved.png"
+                alt="creamxstore"
+                width={180}
+                height={80}
+                className="h-18 w-auto brightness-0 invert"
+              />
+            </Link>
             <p className="text-sm text-gray-400">
               Premium beauty products for your natural glow.
             </p>
@@ -99,7 +106,7 @@ export default function Footer() {
 
         {/* Copyright */}
         <div className="border-t border-gray-700 mt-8 pt-8 text-center text-sm text-gray-400">
-          © {new Date().getFullYear()} xcosmetic. All rights reserved.
+          © {new Date().getFullYear()} creamxstore. All rights reserved.
         </div>
       </div>
     </footer>
