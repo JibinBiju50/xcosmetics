@@ -1,4 +1,4 @@
-import { Mail, MapPin, Building2 } from 'lucide-react';
+import { Mail, MapPin, Building2, User } from 'lucide-react';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -35,7 +35,16 @@ export default function ContactPage() {
               <Building2 className="w-7 h-7" />
             </div>
             <h3 className="text-sm font-bold text-[var(--color-text)] uppercase tracking-wider mb-2 font-[family-name:var(--font-outfit)]">Trade Name</h3>
-            <p className="text-[var(--color-text-muted)] font-medium text-lg">creamxemirates</p>
+            <p className="text-[var(--color-text-muted)] font-medium text-lg">creamxstore</p>
+          </div>
+
+          {/* Merchant Name */}
+          <div className="flex flex-col items-center text-center p-8 rounded-2xl bg-white hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-[var(--color-border)] group">
+            <div className="bg-pink-50 p-4 rounded-xl text-[var(--color-primary)] mb-5 group-hover:scale-110 group-hover:bg-[var(--color-primary)] group-hover:text-white transition-all duration-300">
+              <User className="w-7 h-7" />
+            </div>
+            <h3 className="text-sm font-bold text-[var(--color-text)] uppercase tracking-wider mb-2 font-[family-name:var(--font-outfit)]">Merchant Name</h3>
+            <p className="text-[var(--color-text-muted)] font-medium text-lg">Sooraj Santhosh</p>
           </div>
 
           {/* Email */}
@@ -50,7 +59,7 @@ export default function ContactPage() {
           </div>
 
           {/* Address - Spans full width on desktop */}
-          <div className="flex flex-col items-center text-center p-8 rounded-2xl bg-white hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-[var(--color-border)] group md:col-span-2">
+          <div className="flex flex-col items-center text-center p-8 rounded-2xl bg-white hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-[var(--color-border)] group">
             <div className="bg-pink-50 p-4 rounded-xl text-[var(--color-primary)] mb-5 group-hover:scale-110 group-hover:bg-[var(--color-primary)] group-hover:text-white transition-all duration-300">
               <MapPin className="w-7 h-7" />
             </div>

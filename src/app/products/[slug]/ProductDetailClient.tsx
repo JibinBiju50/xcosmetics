@@ -205,7 +205,7 @@ export default function ProductDetailClient({ product, reviews }: ProductDetailC
               </div>
 
               {/* Description */}
-              <p className="text-gray-600 mt-6 leading-relaxed">
+              <p className="text-gray-600 mt-6 leading-relaxed whitespace-pre-line">
                 {product.description}
               </p>
 

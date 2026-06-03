@@ -21,7 +21,33 @@ async function getProduct(slug: string): Promise<Product | null> {
     return null;
   }
 
-  return data;
+  const product = data;
+  if (product && product.slug === 'face-cream') {
+    product.image_url = '/images/face_cream_creamx/cream_img1.PNG';
+    product.images = [
+      '/images/face_cream_creamx/cream_img1.PNG',
+      '/images/face_cream_creamx/cream_img2.JPG',
+      '/images/face_cream_creamx/cream_img3.JPG',
+      '/images/face_cream_creamx/cream_img4.JPG'
+    ];
+    product.description = `Clears pimples, acne, dark spots & open pores
+Restores a clear, smooth & glowing complexion
+Enhances skin tone for bright
+Provides a complete skincare solution for daily care
+
+Reveal your natural glow & confidence — every single day!
+
+Our cream has the best solution for,
+▪️ skin brightness 
+▪️ acnes
+▪️ pimples
+▪️ dark spots 
+▪️ dark circles 
+▪️ anti pigmentation 
+▪️ open pores`;
+  }
+
+  return product;
 }
 
 async function getReviews(productId: string): Promise<Review[]> {

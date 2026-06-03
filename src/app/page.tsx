@@ -20,7 +20,21 @@ async function getProducts(): Promise<Product[]> {
     return [];
   }
 
-  return data || [];
+  const products = data || [];
+  
+  // Override face cream images
+  const faceCream = products.find(p => p.slug === 'face-cream');
+  if (faceCream) {
+    faceCream.image_url = '/images/face_cream_creamx/cream_img1.PNG';
+    faceCream.images = [
+      '/images/face_cream_creamx/cream_img1.PNG',
+      '/images/face_cream_creamx/cream_img2.JPG',
+      '/images/face_cream_creamx/cream_img3.JPG',
+      '/images/face_cream_creamx/cream_img4.JPG'
+    ];
+  }
+
+  return products;
 }
 
 export default async function HomePage() {
