@@ -27,7 +27,7 @@ async function getProducts(): Promise<Product[]> {
   if (faceCream) {
     faceCream.image_url = '/images/face_cream_creamx/cream_img1.PNG';
     faceCream.original_price = 899;
-    faceCream.offer_price = 720;
+    faceCream.offer_price = 1; // Temporary for testing
     faceCream.images = [
       '/images/face_cream_creamx/cream_img2.JPG',
       '/images/face_cream_creamx/cream_img3.JPG',
