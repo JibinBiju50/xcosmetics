@@ -92,7 +92,7 @@ export default function CheckoutPage() {
       return 100; // COD only has Postal with ₹100
     }
     // Online payment
-    return courierService === 'dtdc' ? 0 : 0; // DTDC ₹0 for testing, Postal free
+    return courierService === 'dtdc' ? 60 : 0; // DTDC ₹60, Postal free
   };
 
   const shippingCharge = getShippingCharge();
@@ -395,7 +395,7 @@ export default function CheckoutPage() {
                         <p className="font-semibold">DTDC Express</p>
                         <p className="text-sm text-gray-500">3-5 business days</p>
                       </div>
-                      <span className="font-semibold text-green-600">FREE</span>
+                      <span className="font-semibold">₹60</span>
                     </label>
                     <label
                       className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-colors ${courierService === 'postal'

@@ -25,7 +25,7 @@ async function getProduct(slug: string): Promise<Product | null> {
   if (product && product.slug === 'face-cream') {
     product.image_url = '/images/face_cream_creamx/cream_img1.PNG';
     product.original_price = 899;
-    product.offer_price = 1; // Temporary for testing
+    product.offer_price = 720;
     product.images = [
       '/images/face_cream_creamx/cream_img2.JPG',
       '/images/face_cream_creamx/cream_img3.JPG',
