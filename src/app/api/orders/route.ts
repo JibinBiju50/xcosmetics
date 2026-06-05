@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
-import { Cashfree, CFEnvironment, CreateOrderRequest } from 'cashfree-pg';
+import {
+  generatePayUHash,
+  getMerchantKey,
+  getPayUUrl,
+  type PayUFormParams,
+} from '@/lib/payu';
 import { sendOrderConfirmation } from '@/lib/email';
-
-// Initialize Cashfree v5.x with positional arguments: (environment, clientId, clientSecret)
-const cashfree = new Cashfree(
-  process.env.NODE_ENV === 'production' ? CFEnvironment.PRODUCTION : CFEnvironment.SANDBOX,
-  process.env.CASHFREE_APP_ID!,
-  process.env.CASHFREE_SECRET_KEY!
-);
 
 function generateOrderId(): string {
   const timestamp = Date.now().toString(36).toUpperCase();
@@ -36,7 +34,7 @@ export async function POST(request: NextRequest) {
     const orderId = generateOrderId();
 
     // Create order in database
-    const { data: order, error } = await supabase
+    const { error } = await supabase
       .from('orders')
       .insert({
         order_id: orderId,
@@ -50,7 +48,7 @@ export async function POST(request: NextRequest) {
         total,
         payment_method,
         courier_service,
-        payment_status: payment_method === 'cod' ? 'pending' : 'pending',
+        payment_status: 'pending',
         order_status: 'not_yet_shipped',
       })
       .select()
@@ -61,58 +59,46 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create order' }, { status: 500 });
     }
 
-    // If online payment, create Cashfree order
+    // ── Online payment: generate PayU params ──────────────────────────────────
     if (payment_method === 'online') {
       try {
-        const cashfreeOrderRequest: CreateOrderRequest = {
-          order_id: orderId,
-          order_amount: total,
-          order_currency: 'INR',
-          customer_details: {
-            customer_id: `cust_${Date.now()}`,
-            customer_name,
-            customer_email,
-            customer_phone,
-          },
-          order_meta: {
-            return_url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/callback?order_id=${orderId}`,
-          },
-        };
+        // PayU requires amount as a string with exactly 2 decimal places
+        const amountStr = Number(total).toFixed(2);
 
-        // v5.x takes CreateOrderRequest directly (no version string)
-        const response = await cashfree.PGCreateOrder(cashfreeOrderRequest);
+        // PayU's `firstname` field should contain only the first name
+        const firstname = String(customer_name).split(' ')[0];
 
-        // Update order with Cashfree order ID
-        await supabase
-          .from('orders')
-          .update({ cashfree_order_id: response.data?.cf_order_id })
-          .eq('order_id', orderId);
-
-        // Send order confirmation email
-        await sendOrderConfirmation({
-          orderId,
-          customerName: customer_name,
-          customerEmail: customer_email,
-          items,
-          subtotal,
-          shippingCharge: shipping_charge,
-          total,
-          shippingAddress: shipping_address,
-          paymentMethod: payment_method,
-          courierService: courier_service,
+        const hash = generatePayUHash({
+          txnid: orderId,
+          amount: amountStr,
+          productinfo: 'xcosmetics order',
+          firstname,
+          email: customer_email,
+          udf1: orderId, // store orderId for retrieval in callback
         });
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const orderData = response.data as any;
+        const payuParams: PayUFormParams = {
+          key: getMerchantKey(),
+          txnid: orderId,
+          amount: amountStr,
+          productinfo: 'xcosmetics order',
+          firstname,
+          email: customer_email,
+          phone: customer_phone,
+          surl: `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/callback`,
+          furl: `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/callback`,
+          udf1: orderId,
+          hash,
+          action: getPayUUrl(),
+        };
 
         return NextResponse.json({
           order_id: orderId,
-          payment_url: orderData?.payment_link,
-          payment_session_id: orderData?.payment_session_id,
+          payu_params: payuParams,
         });
-      } catch (cashfreeError) {
-        console.error('Cashfree error:', cashfreeError);
-        // Fallback to COD if payment fails
+      } catch (payuError) {
+        console.error('PayU hash generation error:', payuError);
+        // Graceful fallback — treat as COD
         return NextResponse.json({
           order_id: orderId,
           message: 'Payment gateway error. Order placed as COD.',
@@ -120,7 +106,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // COD order - send confirmation email
+    // ── COD: send confirmation email immediately ───────────────────────────────
     await sendOrderConfirmation({
       orderId,
       customerName: customer_name,

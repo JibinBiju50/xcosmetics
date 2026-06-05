@@ -136,7 +136,7 @@ export default function AdminDashboardClient({ orders: initialOrders }: AdminDas
             <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
           </div>
           <div className="bg-white rounded-xl shadow-sm" style={{ padding: '20px' }}>
-            <p className="text-gray-500 text-sm" style={{ marginBottom: '8px' }}>Pending</p>
+            <p className="text-gray-500 text-sm" style={{ marginBottom: '8px' }}>Not Yet Shipped</p>
             <p className="text-2xl font-bold text-orange-500">{stats.pending}</p>
           </div>
           <div className="bg-white rounded-xl shadow-sm" style={{ padding: '20px' }}>

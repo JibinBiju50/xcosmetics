@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, CreditCard, Banknote, Truck } from 'lucide-react';
+import { ArrowLeft, CreditCard, Banknote, Truck, Trash2 } from 'lucide-react';
 import { Product } from '@/types';
 import { formatPrice } from '@/lib/utils';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -12,6 +12,30 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 interface CartItem {
   product: Product;
   quantity: number;
+}
+
+/**
+ * Creates a hidden HTML form and auto-submits it to PayU's payment page.
+ * This is the standard, secure integration method for PayU Biz.
+ * The `action` field in params contains the PayU endpoint URL.
+ */
+function submitPayUForm(params: Record<string, string>) {
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = params.action;
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (key !== 'action') {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = key;
+      input.value = value;
+      form.appendChild(input);
+    }
+  });
+
+  document.body.appendChild(form);
+  form.submit();
 }
 
 export default function CheckoutPage() {
@@ -51,6 +75,16 @@ export default function CheckoutPage() {
     (sum, item) => sum + item.product.offer_price * item.quantity,
     0
   );
+
+  const handleRemoveItem = (productId: string) => {
+    const newCart = cart.filter(item => item.product.id !== productId);
+    setCart(newCart);
+    localStorage.setItem('cart', JSON.stringify(newCart));
+    window.dispatchEvent(new Event('cartUpdated'));
+    if (newCart.length === 0) {
+      router.push('/cart');
+    }
+  };
 
   // Shipping charges based on payment method and courier
   const getShippingCharge = () => {
@@ -104,20 +138,22 @@ export default function CheckoutPage() {
 
       if (response.ok) {
         if (paymentMethod === 'online') {
-          // Check if payment URL exists
-          if (data.payment_url) {
-            // Redirect to Cashfree payment
-            window.location.href = data.payment_url;
+          if (data.payu_params) {
+            // Clear cart before leaving — PayU will handle the redirect back
+            localStorage.removeItem('cart');
+            window.dispatchEvent(new Event('cartUpdated'));
+            // Auto-submit hidden form to PayU's payment page
+            submitPayUForm(data.payu_params);
           } else {
-            // Payment URL not available - show error and redirect to confirmation
-            console.error('Payment URL not received:', data);
+            // Fallback: payment gateway unavailable, order saved as COD
+            console.error('PayU params not received:', data);
             alert('Payment gateway temporarily unavailable. Your order has been placed as COD.');
             localStorage.removeItem('cart');
             window.dispatchEvent(new Event('cartUpdated'));
             router.push(`/order-confirmation/${data.order_id}`);
           }
         } else {
-          // COD - go to confirmation
+          // COD — go to confirmation
           localStorage.removeItem('cart');
           window.dispatchEvent(new Event('cartUpdated'));
           router.push(`/order-confirmation/${data.order_id}`);
@@ -415,7 +451,7 @@ export default function CheckoutPage() {
                 {/* Items */}
                 <div className="space-y-3 max-h-64 overflow-y-auto mb-4">
                   {cart.map((item) => (
-                    <div key={item.product.id} className="flex gap-3">
+                    <div key={item.product.id} className="flex gap-3 relative">
                       <div className="relative w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden">
                         <Image
                           src={item.product.image_url || '/images/placeholder.jpg'}
@@ -424,7 +460,7 @@ export default function CheckoutPage() {
                           className="object-cover"
                         />
                       </div>
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 pr-8">
                         <p className="text-sm font-medium text-gray-900 line-clamp-1">
                           {item.product.name}
                         </p>
@@ -433,6 +469,14 @@ export default function CheckoutPage() {
                           {formatPrice(item.product.offer_price * item.quantity)}
                         </p>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveItem(item.product.id)}
+                        className="absolute right-0 top-0 text-gray-400 hover:text-red-500 p-1"
+                        title="Remove item"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </div>
                   ))}
                 </div>
