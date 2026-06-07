@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { Search, Filter, X } from 'lucide-react';
 import ProductCard from '@/components/ui/ProductCard';
 import { Product } from '@/types';
+import { trackAddToCart } from '@/lib/pixel';
 
 interface ProductsClientProps {
   products: Product[];
@@ -40,6 +41,14 @@ export default function ProductsClient({
 
     localStorage.setItem('cart', JSON.stringify(cart));
     window.dispatchEvent(new Event('cartUpdated'));
+
+    // Meta Pixel: track add to cart
+    trackAddToCart({
+      id: product.id,
+      name: product.name,
+      category: product.category,
+      offer_price: product.offer_price,
+    });
   };
 
   const filteredProducts = useMemo(() => {

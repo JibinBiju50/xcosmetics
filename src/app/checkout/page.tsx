@@ -8,6 +8,7 @@ import { ArrowLeft, CreditCard, Banknote, Truck, Trash2 } from 'lucide-react';
 import { Product } from '@/types';
 import { formatPrice } from '@/lib/utils';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import { trackInitiateCheckout } from '@/lib/pixel';
 
 interface CartItem {
   product: Product;
@@ -66,6 +67,24 @@ export default function CheckoutPage() {
         router.push('/cart');
       }
       setCart(parsedCart);
+
+      // Meta Pixel: track checkout initiation
+      if (parsedCart.length > 0) {
+        const totalItems = parsedCart.reduce(
+          (sum: number, item: CartItem) => sum + item.quantity,
+          0
+        );
+        const totalValue = parsedCart.reduce(
+          (sum: number, item: CartItem) =>
+            sum + item.product.offer_price * item.quantity,
+          0
+        );
+        trackInitiateCheckout({
+          content_ids: parsedCart.map((item: CartItem) => item.product.id),
+          num_items: totalItems,
+          value: totalValue,
+        });
+      }
     } else {
       router.push('/cart');
     }

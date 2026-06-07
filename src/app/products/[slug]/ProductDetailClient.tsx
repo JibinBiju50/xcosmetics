@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Star, ShoppingCart, ArrowLeft, Minus, Plus, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Product, Review } from '@/types';
 import { formatPrice, calculateDiscount } from '@/lib/utils';
+import { trackViewContent, trackAddToCart } from '@/lib/pixel';
 
 interface ProductDetailClientProps {
   product: Product;
@@ -24,7 +25,14 @@ export default function ProductDetailClient({ product, reviews }: ProductDetailC
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    // Meta Pixel: track product view
+    trackViewContent({
+      id: product.id,
+      name: product.name,
+      category: product.category,
+      offer_price: product.offer_price,
+    });
+  }, [product]);
 
   // Image gallery state
   const allImages = [product.image_url, ...(product.images || [])].filter(Boolean);
@@ -49,6 +57,15 @@ export default function ProductDetailClient({ product, reviews }: ProductDetailC
     window.dispatchEvent(new Event('cartUpdated'));
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
+
+    // Meta Pixel: track add to cart
+    trackAddToCart({
+      id: product.id,
+      name: product.name,
+      category: product.category,
+      offer_price: product.offer_price,
+      quantity,
+    });
   };
 
   const handleBuyNow = () => {

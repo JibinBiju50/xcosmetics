@@ -1,5 +1,6 @@
 import { Mail, MapPin, Building2, User } from 'lucide-react';
 import type { Metadata } from 'next';
+import ContactTracker from '@/components/tracking/ContactTracker';
 
 export const metadata: Metadata = {
   title: 'Contact Us | creamXstore',
@@ -9,6 +10,8 @@ export const metadata: Metadata = {
 export default function ContactPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] px-4 py-16 bg-[var(--color-background)] relative overflow-hidden">
+      {/* Meta Pixel: track contact page view */}
+      <ContactTracker />
       {/* Decorative background elements */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-pink-100 rounded-full blur-3xl opacity-50 mix-blend-multiply animate-pulse" />

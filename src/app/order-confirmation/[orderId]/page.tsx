@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle, Package, Mail, Phone } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
+import PurchaseTracker from '@/components/tracking/PurchaseTracker';
 
 interface PageProps {
   params: Promise<{ orderId: string }>;
@@ -39,8 +40,17 @@ export default async function OrderConfirmationPage({ params }: PageProps) {
     notFound();
   }
 
+  const orderItems = order.items as OrderItem[];
+  const totalItems = orderItems.reduce((sum, item) => sum + item.quantity, 0);
+
   return (
     <div className="min-h-screen bg-gray-50 py-12">
+      {/* Meta Pixel: track purchase */}
+      <PurchaseTracker
+        contentIds={orderItems.map((item) => item.name)}
+        numItems={totalItems}
+        value={order.total}
+      />
       <div className="container mx-auto px-4 max-w-2xl">
         {/* Success Header */}
         <div className="text-center mb-8">
