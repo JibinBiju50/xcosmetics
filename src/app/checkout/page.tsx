@@ -108,7 +108,7 @@ export default function CheckoutPage() {
   // Shipping charges based on payment method and courier
   const getShippingCharge = () => {
     if (paymentMethod === 'cod') {
-      return 100; // COD only has Postal with ₹100
+      return 140; // COD only has Postal with ₹140
     }
     // Online payment
     return courierService === 'dtdc' ? 60 : 0; // DTDC ₹60, Postal free
@@ -379,7 +379,7 @@ export default function CheckoutPage() {
                     <Banknote size={24} className="text-gray-600" />
                     <div>
                       <p className="font-semibold">Cash on Delivery</p>
-                      <p className="text-xs text-gray-500">+₹100 shipping (Postal only)</p>
+                      <p className="text-xs text-gray-500">(Postal only)</p>
                     </div>
                   </label>
                 </div>
@@ -447,7 +447,7 @@ export default function CheckoutPage() {
                     <Truck size={20} className="text-amber-600" />
                     <div>
                       <p className="font-semibold text-amber-800">Shipping via India Post</p>
-                      <p className="text-sm text-amber-700">COD orders are shipped via Postal service (7-10 days) with ₹100 shipping charge</p>
+                      <p className="text-sm text-amber-700">COD orders are shipped via Postal service (7-10 days)</p>
                     </div>
                   </div>
                 </div>

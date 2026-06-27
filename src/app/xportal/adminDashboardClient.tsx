@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import {
@@ -15,7 +15,11 @@ import {
   Banknote,
   X,
   Copy,
-  Check
+  Check,
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+  Calendar,
 } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
 
@@ -48,7 +52,20 @@ export default function AdminDashboardClient({ orders: initialOrders }: AdminDas
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [paymentFilter, setPaymentFilter] = useState<string>('all');
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, paymentFilter, paymentStatusFilter, startDate, endDate]);
   const [updating, setUpdating] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -123,14 +140,37 @@ ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
     const matchesPayment = paymentFilter === 'all' || order.payment_method === paymentFilter;
     const matchesPaymentStatus = paymentStatusFilter === 'all' || order.payment_status === paymentStatusFilter;
 
-    return matchesSearch && matchesStatus && matchesPayment && matchesPaymentStatus;
+    let matchesDate = true;
+    if (startDate || endDate) {
+      const orderDate = new Date(order.created_at);
+      orderDate.setHours(0, 0, 0, 0);
+
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        if (orderDate < start) matchesDate = false;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(0, 0, 0, 0);
+        if (orderDate > end) matchesDate = false;
+      }
+    }
+
+    return matchesSearch && matchesStatus && matchesPayment && matchesPaymentStatus && matchesDate;
   });
+
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / 10));
+  const paginatedOrders = filteredOrders.slice((currentPage - 1) * 10, currentPage * 10);
 
   const stats = {
     total: orders.length,
     pending: orders.filter(o => o.order_status === 'not_yet_shipped').length,
     shipped: orders.filter(o => o.order_status === 'shipped').length,
     delivered: orders.filter(o => o.order_status === 'delivered').length,
+    unpaidOnline: orders.filter(
+      o => o.payment_method === 'online' && (o.payment_status === 'pending' || o.payment_status === 'failed')
+    ).length,
   };
 
   return (
@@ -173,6 +213,8 @@ ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
           </div>
         </div>
 
+
+
         {/* Filters */}
         <div
           className="bg-white rounded-xl shadow-sm flex flex-col md:flex-row md:items-center"
@@ -188,9 +230,34 @@ ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
               className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-pink-500 outline-none"
             />
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Filter size={18} className="text-gray-400" />
-            <select
+          <div className="flex flex-col md:flex-row md:items-center gap-3 mt-4 md:mt-0 w-full md:w-auto">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 border rounded-lg px-3 py-2 bg-gray-50 w-full md:w-auto">
+              <div className="flex items-center gap-2 flex-1 sm:flex-none w-full sm:w-auto">
+                <Calendar size={18} className="text-gray-400 flex-shrink-0" />
+                <span className="text-sm text-gray-500 sm:hidden w-10">From:</span>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="bg-transparent outline-none text-sm text-gray-700 w-full sm:w-auto flex-1"
+                  title="Start Date"
+                />
+              </div>
+              <div className="hidden sm:block text-gray-400 text-sm">to</div>
+              <div className="flex items-center gap-2 flex-1 sm:flex-none w-full sm:w-auto border-t border-gray-200 sm:border-none pt-2 sm:pt-0">
+                <span className="text-sm text-gray-500 sm:hidden w-10">To:</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="bg-transparent outline-none text-sm text-gray-700 w-full sm:w-auto flex-1"
+                  title="End Date"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
+              <Filter size={18} className="text-gray-400 hidden md:block" />
+              <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-pink-500 outline-none"
@@ -219,6 +286,7 @@ ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
               <option value="pending">Pending</option>
               <option value="failed">Failed</option>
             </select>
+            </div>
           </div>
         </div>
 
@@ -234,50 +302,83 @@ ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
                 No orders found
               </div>
             ) : (
-              filteredOrders.map((order) => (
-                <div
-                  key={order.id}
-                  onClick={() => setSelectedOrder(order)}
-                  className={`bg-white rounded-xl shadow-sm cursor-pointer transition-all hover:shadow-md ${selectedOrder?.id === order.id ? 'ring-2 ring-pink-500' : ''}`}
-                  style={{ padding: '20px' }}
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <p className="font-bold text-pink-500">{order.order_id}</p>
-                      <p className="text-sm text-gray-600">{order.customer_name}</p>
+              paginatedOrders.map((order) => {
+                const isProblem = order.payment_method === 'online' && (order.payment_status === 'pending' || order.payment_status === 'failed');
+                return (
+                  <div
+                    key={order.id}
+                    onClick={() => setSelectedOrder(order)}
+                    className={`${
+                      isProblem ? 'bg-red-50 border-2 border-red-200' : 'bg-white shadow-sm'
+                    } rounded-xl cursor-pointer transition-all hover:shadow-md ${
+                      selectedOrder?.id === order.id ? (isProblem ? 'ring-2 ring-red-500' : 'ring-2 ring-pink-500') : ''
+                    }`}
+                    style={{ padding: '20px' }}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <p className={`font-bold ${isProblem ? 'text-red-600' : 'text-pink-500'}`}>{order.order_id}</p>
+                        <p className="text-sm text-gray-600">{order.customer_name}</p>
+                      </div>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        isProblem ? 'bg-red-100 text-red-700' :
+                        order.order_status === 'delivered' ? 'bg-green-100 text-green-700' :
+                        order.order_status === 'shipped' ? 'bg-blue-100 text-blue-700' :
+                        'bg-orange-100 text-orange-700'
+                      }`}>
+                        {isProblem ? (order.payment_status === 'failed' ? '✕ Failed' : '⏳ Unpaid') : order.order_status.replace('_', ' ')}
+                      </span>
                     </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${order.order_status === 'delivered'
-                      ? 'bg-green-100 text-green-700'
-                      : order.order_status === 'shipped'
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'bg-orange-100 text-orange-700'
-                      }`}>
-                      {order.order_status.replace('_', ' ')}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500">
-                      {new Date(order.created_at).toLocaleDateString()}
-                    </span>
-                    <span className="font-semibold">{formatPrice(order.total)}</span>
-                  </div>
-                  <div className="flex items-center gap-2 mt-2">
-                    {order.payment_method === 'cod' ? (
-                      <span className="flex items-center gap-1 text-xs text-gray-500">
-                        <Banknote size={14} /> COD
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-500">
+                        {isMounted ? new Date(order.created_at).toLocaleDateString() : '...'}
                       </span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-xs text-gray-500">
-                        <CreditCard size={14} /> Online
-                      </span>
-                    )}
-                    <span className={`text-xs ${order.payment_status === 'paid' ? 'text-green-600' : 'text-orange-600'
-                      }`}>
-                      {order.payment_status}
-                    </span>
+                      <span className="font-semibold">{formatPrice(order.total)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      {order.payment_method === 'cod' ? (
+                        <span className="flex items-center gap-1 text-xs text-gray-500">
+                          <Banknote size={14} /> COD
+                        </span>
+                      ) : (
+                        <span className={`flex items-center gap-1 text-xs ${isProblem ? 'text-red-500' : 'text-gray-500'}`}>
+                          <CreditCard size={14} /> Online {isProblem && `— ${order.payment_status}`}
+                        </span>
+                      )}
+                      {!isProblem && (
+                        <span className={`text-xs ${order.payment_status === 'paid' ? 'text-green-600' : 'text-orange-600'}`}>
+                          {order.payment_status}
+                        </span>
+                      )}
+                    </div>
                   </div>
+                );
+              })
+            )}
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between bg-white rounded-xl shadow-sm p-4 mt-2">
+                <span className="text-sm text-gray-600">
+                  Page <span className="font-semibold">{currentPage}</span> of <span className="font-semibold">{totalPages}</span>
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="p-2 border rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-gray-600"
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="p-2 border rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-gray-600"
+                  >
+                    <ChevronRight size={20} />
+                  </button>
                 </div>
-              ))
+              </div>
             )}
           </div>
 
@@ -307,6 +408,19 @@ ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  {/* Warning for unpaid online orders */}
+                  {selectedOrder.payment_method === 'online' && selectedOrder.payment_status !== 'paid' && (
+                    <div className="bg-red-100 border-2 border-red-400 rounded-xl flex items-center gap-3" style={{ padding: '14px 18px' }}>
+                      <AlertTriangle size={22} className="text-red-600 flex-shrink-0" />
+                      <div>
+                        <p className="font-bold text-red-800 text-sm">⚠ DO NOT SHIP — Payment not received</p>
+                        <p className="text-xs text-red-600">
+                          This customer selected online payment but {selectedOrder.payment_status === 'failed' ? 'the payment failed' : 'did not complete it'}.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   <div>
                     <p className="text-sm text-gray-500">Order ID</p>
                     <p className="font-bold text-pink-500">{selectedOrder.order_id}</p>
@@ -373,7 +487,11 @@ ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
                           <button
                             key={status}
                             onClick={() => updateOrderStatus(selectedOrder.order_id, status)}
-                            disabled={updating || selectedOrder.order_status === status}
+                            disabled={
+                              updating ||
+                              selectedOrder.order_status === status ||
+                              (status !== 'not_yet_shipped' && selectedOrder.payment_method === 'online' && selectedOrder.payment_status !== 'paid')
+                            }
                             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${selectedOrder.order_status === status
                               ? status === 'delivered'
                                 ? 'bg-green-500 text-white'

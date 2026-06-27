@@ -23,15 +23,17 @@ export async function POST(request: NextRequest) {
       customer_email,
       shipping_address,
       items,
-      subtotal,
-      shipping_charge,
-      total,
       payment_method,
       courier_service,
     } = body;
 
     const supabase = await createServerSupabaseClient();
     const orderId = generateOrderId();
+
+    // Calculate totals securely on the server
+    const calculated_subtotal = items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
+    const calculated_shipping_charge = payment_method === 'cod' ? 140 : (courier_service === 'dtdc' ? 60 : 0);
+    const calculated_total = calculated_subtotal + calculated_shipping_charge;
 
     // Create order in database
     const { error } = await supabase
@@ -43,9 +45,9 @@ export async function POST(request: NextRequest) {
         customer_email,
         shipping_address,
         items,
-        subtotal,
-        shipping_charge,
-        total,
+        subtotal: calculated_subtotal,
+        shipping_charge: calculated_shipping_charge,
+        total: calculated_total,
         payment_method,
         courier_service,
         payment_status: 'pending',
@@ -63,7 +65,7 @@ export async function POST(request: NextRequest) {
     if (payment_method === 'online') {
       try {
         // PayU requires amount as a string with exactly 2 decimal places
-        const amountStr = Number(total).toFixed(2);
+        const amountStr = Number(calculated_total).toFixed(2);
 
         // PayU's `firstname` field should contain only the first name
         const firstname = String(customer_name).split(' ')[0];
@@ -112,9 +114,9 @@ export async function POST(request: NextRequest) {
       customerName: customer_name,
       customerEmail: customer_email,
       items,
-      subtotal,
-      shippingCharge: shipping_charge,
-      total,
+      subtotal: calculated_subtotal,
+      shippingCharge: calculated_shipping_charge,
+      total: calculated_total,
       shippingAddress: shipping_address,
       paymentMethod: payment_method,
       courierService: courier_service,
