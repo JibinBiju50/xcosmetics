@@ -7,6 +7,7 @@ import { Star, ShoppingCart, ArrowLeft, Minus, Plus, Check, ChevronLeft, Chevron
 import { Product, Review } from '@/types';
 import { formatPrice, calculateDiscount } from '@/lib/utils';
 import { trackViewContent, trackAddToCart } from '@/lib/pixel';
+import FeedbackSection from '@/components/home/FeedbackSection';
 
 interface ProductDetailClientProps {
   product: Product;
@@ -124,7 +125,7 @@ export default function ProductDetailClient({ product, reviews }: ProductDetailC
         </Link>
 
         {/* Product Section - constrained width */}
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-10">
             {/* Image Gallery */}
             <div className="space-y-4">
@@ -187,7 +188,7 @@ export default function ProductDetailClient({ product, reviews }: ProductDetailC
             </div>
 
             {/* Details */}
-            <div className="bg-white rounded-2xl p-6 shadow-lg lg:p-8">
+            <div className="bg-white max-w-6xl rounded-2xl p-6 shadow-lg lg:p-8">
               <span className="text-sm text-pink-500 font-medium uppercase tracking-wide">
                 {product.category}
               </span>
@@ -294,7 +295,9 @@ export default function ProductDetailClient({ product, reviews }: ProductDetailC
             </div>
           </div>
         </div>
-
+      </div>
+      <FeedbackSection />
+      <div className="container mx-auto px-4 py-6 md:px-8 lg:px-16">
         {/* Reviews Section */}
         <div className="max-w-5xl mx-auto">
           <div className="mt-12 bg-white rounded-2xl p-6 shadow-lg lg:p-8">

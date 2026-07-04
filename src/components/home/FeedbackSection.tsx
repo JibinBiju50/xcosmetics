@@ -4,9 +4,10 @@ import { useRef, useState, useEffect } from 'react';
 import Image from 'next/image';
 
 const feedbackImages = [
-    '/images/feedbacks/cream_feedback1.jpeg',
-    '/images/feedbacks/cream_feedback2.jpeg',
-    '/images/feedbacks/cream_feedback3.jpeg',
+    '/images/feedbacks/face_cream_feedback1.jpg',
+    '/images/feedbacks/face_cream_feedback2.jpg',
+    '/images/feedbacks/face_cream_feedback3.jpg',
+    '/images/feedbacks/face_cream_feedback4.jpg',
     '/images/feedbacks/bluu-feedback-women1.jpeg',
     '/images/feedbacks/bluu-feedback-women2.jpeg',
     '/images/feedbacks/bluu-feedback-men1.jpeg',

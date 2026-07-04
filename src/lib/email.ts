@@ -108,6 +108,8 @@ export async function sendOrderConfirmation(data: OrderEmailData) {
         await resend.emails.send({
             from: 'creamXstore <orders@creamxstore.in>',
             to: data.customerEmail,
+            replyTo: 'cemirates5@gmail.com',
+            bcc: 'cemirates5@gmail.com',
             subject: `Order Confirmed - ${data.orderId}`,
             html,
         });
