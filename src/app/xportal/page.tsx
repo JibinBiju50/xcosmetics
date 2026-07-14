@@ -11,21 +11,41 @@ async function getOrders() {
     redirect('/admin/login');
   }
 
-  const { data, error } = await supabase
+  const { data: orders, error: ordersError } = await supabase
     .from('orders')
     .select('*')
     .order('created_at', { ascending: false });
 
-  if (error) {
-    console.error('Error fetching orders:', error);
-    return [];
+  if (ordersError) {
+    console.error('Error fetching orders:', ordersError);
   }
 
-  return data || [];
+  const { data: reviews, error: reviewsError } = await supabase
+    .from('reviews')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (reviewsError) {
+    console.error('Error fetching reviews:', reviewsError);
+  }
+
+  const { data: products, error: productsError } = await supabase
+    .from('products')
+    .select('id, name');
+
+  if (productsError) {
+    console.error('Error fetching products:', productsError);
+  }
+
+  return {
+    orders: orders || [],
+    reviews: reviews || [],
+    products: products || []
+  };
 }
 
 export default async function AdminPage() {
-  const orders = await getOrders();
+  const { orders, reviews, products } = await getOrders();
 
-  return <AdminDashboardClient orders={orders} />;
+  return <AdminDashboardClient orders={orders} reviews={reviews} products={products} />;
 }

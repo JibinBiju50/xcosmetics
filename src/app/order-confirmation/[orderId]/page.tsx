@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { CheckCircle, Package, Mail, Phone } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
 import PurchaseTracker from '@/components/tracking/PurchaseTracker';
+import ClearCart from '@/components/checkout/ClearCart';
 
 interface PageProps {
   params: Promise<{ orderId: string }>;
@@ -45,6 +46,7 @@ export default async function OrderConfirmationPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
+      <ClearCart />
       {/* Meta Pixel: track purchase */}
       <PurchaseTracker
         contentIds={orderItems.map((item) => item.name)}

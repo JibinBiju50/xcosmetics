@@ -20,8 +20,22 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar,
+  MessageSquare,
+  Star,
+  Trash2,
+  Edit2,
+  Save,
 } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
+
+export interface Review {
+  id: string;
+  product_id: string;
+  customer_name: string;
+  rating: number;
+  comment: string;
+  created_at: string;
+}
 
 interface Order {
   id: string;
@@ -43,10 +57,17 @@ interface Order {
 
 interface AdminDashboardClientProps {
   orders: Order[];
+  reviews: Review[];
+  products?: { id: string; name: string }[];
 }
 
-export default function AdminDashboardClient({ orders: initialOrders }: AdminDashboardClientProps) {
+export default function AdminDashboardClient({ orders: initialOrders, reviews: initialReviews, products = [] }: AdminDashboardClientProps) {
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<'orders' | 'reviews'>('orders');
+  const [reviews, setReviews] = useState<Review[]>(initialReviews);
+  const [reviewProductFilter, setReviewProductFilter] = useState<string>('all');
+  const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
+  const [editingReviewData, setEditingReviewData] = useState<Partial<Review>>({});
   const [orders, setOrders] = useState(initialOrders);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -130,6 +151,40 @@ ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
     setUpdating(false);
   };
 
+  const handleDeleteReview = async (reviewId: string) => {
+    if (!window.confirm('Are you sure you want to delete this review?')) return;
+    setUpdating(true);
+    const { error } = await supabase.from('reviews').delete().eq('id', reviewId);
+    if (!error) {
+      setReviews(reviews.filter(r => r.id !== reviewId));
+    } else {
+      alert('Failed to delete review');
+    }
+    setUpdating(false);
+  };
+
+  const handleUpdateReview = async (reviewId: string) => {
+    setUpdating(true);
+    const { error } = await supabase
+      .from('reviews')
+      .update({
+        customer_name: editingReviewData.customer_name,
+        rating: editingReviewData.rating,
+        comment: editingReviewData.comment,
+      })
+      .eq('id', reviewId);
+
+    if (!error) {
+      setReviews(reviews.map(r => 
+        r.id === reviewId ? { ...r, ...editingReviewData } : r
+      ));
+      setEditingReviewId(null);
+    } else {
+      alert('Failed to update review');
+    }
+    setUpdating(false);
+  };
+
   const filteredOrders = orders.filter(order => {
     const matchesSearch =
       order.order_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -190,9 +245,30 @@ ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
             Logout
           </button>
         </div>
+        {/* Tab Switcher */}
+        <div className="border-b bg-white px-4">
+          <div className="container mx-auto flex gap-6">
+            <button
+              onClick={() => setActiveTab('orders')}
+              className={`pb-4 pt-2 font-medium text-sm transition-colors relative ${activeTab === 'orders' ? 'text-pink-600' : 'text-gray-500 hover:text-gray-800'}`}
+            >
+              Orders Management
+              {activeTab === 'orders' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-pink-500 rounded-t-full" />}
+            </button>
+            <button
+              onClick={() => setActiveTab('reviews')}
+              className={`pb-4 pt-2 font-medium text-sm transition-colors relative ${activeTab === 'reviews' ? 'text-pink-600' : 'text-gray-500 hover:text-gray-800'}`}
+            >
+              Reviews Management
+              {activeTab === 'reviews' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-pink-500 rounded-t-full" />}
+            </button>
+          </div>
+        </div>
       </header>
 
       <div className="container mx-auto" style={{ padding: '32px 24px' }}>
+        {activeTab === 'orders' ? (
+          <>
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4" style={{ gap: '20px', marginBottom: '28px' }}>
           <div className="bg-white rounded-xl shadow-sm" style={{ padding: '20px' }}>
@@ -548,6 +624,98 @@ ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
             )}
           </div>
         </div>
+          </>
+        ) : (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <h2 className="font-semibold text-gray-700">Reviews ({reviews.length})</h2>
+              <div className="flex items-center gap-2">
+                <Filter size={18} className="text-gray-400" />
+                <select
+                  value={reviewProductFilter}
+                  onChange={(e) => setReviewProductFilter(e.target.value)}
+                  className="border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-pink-500 outline-none bg-white"
+                >
+                  <option value="all">All Products</option>
+                  {products.map(product => (
+                    <option key={product.id} value={product.id}>{product.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {reviews.filter(r => reviewProductFilter === 'all' || r.product_id === reviewProductFilter).length === 0 ? (
+              <div className="bg-white rounded-xl text-center text-gray-500 py-12">
+                <MessageSquare size={48} className="mx-auto text-gray-300 mb-4" />
+                No reviews found
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {reviews.filter(r => reviewProductFilter === 'all' || r.product_id === reviewProductFilter).map(review => {
+                  const isEditing = editingReviewId === review.id;
+                  const productName = products.find(p => p.id === review.product_id)?.name || review.product_id;
+                  return (
+                    <div key={review.id} className="bg-white rounded-xl shadow-sm p-6 flex flex-col">
+                      {isEditing ? (
+                        <div className="flex flex-col gap-3 flex-1">
+                          <input 
+                            value={editingReviewData.customer_name || ''} 
+                            onChange={e => setEditingReviewData({...editingReviewData, customer_name: e.target.value})}
+                            className="border px-3 py-1.5 rounded-lg text-sm"
+                            placeholder="Customer Name"
+                          />
+                          <input 
+                            type="number"
+                            min="1" max="5"
+                            value={editingReviewData.rating || ''} 
+                            onChange={e => setEditingReviewData({...editingReviewData, rating: parseInt(e.target.value)})}
+                            className="border px-3 py-1.5 rounded-lg text-sm"
+                            placeholder="Rating (1-5)"
+                          />
+                          <textarea 
+                            value={editingReviewData.comment || ''} 
+                            onChange={e => setEditingReviewData({...editingReviewData, comment: e.target.value})}
+                            className="border px-3 py-1.5 rounded-lg text-sm flex-1"
+                            placeholder="Comment"
+                            rows={3}
+                          />
+                          <div className="flex gap-2 justify-end mt-2">
+                            <button onClick={() => setEditingReviewId(null)} className="px-3 py-1.5 text-sm text-gray-600 border rounded-lg hover:bg-gray-50">Cancel</button>
+                            <button onClick={() => handleUpdateReview(review.id)} disabled={updating} className="px-3 py-1.5 text-sm bg-pink-500 text-white rounded-lg flex items-center gap-1 hover:bg-pink-600 disabled:opacity-50"><Save size={14} /> Save</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex justify-between items-start mb-4">
+                            <div>
+                              <p className="font-bold text-gray-900">{review.customer_name}</p>
+                              <div className="flex text-yellow-400 my-1">
+                                {[...Array(5)].map((_, i) => (
+                                  <Star key={i} size={14} className={i < review.rating ? 'fill-current' : 'text-gray-200'} />
+                                ))}
+                              </div>
+                            </div>
+                            <span className="text-xs text-gray-500">{new Date(review.created_at).toLocaleDateString()}</span>
+                          </div>
+                          <p className="text-sm text-gray-700 flex-1 mb-4">"{review.comment}"</p>
+                          <div className="flex items-center justify-between text-xs pt-4 border-t border-gray-100">
+                            <span className="text-gray-500 bg-gray-100 px-2 py-1 rounded-md max-w-[200px] truncate" title={productName}>{productName}</span>
+                            <div className="flex gap-2">
+                              <button onClick={() => {
+                                setEditingReviewId(review.id);
+                                setEditingReviewData(review);
+                              }} className="text-blue-500 hover:text-blue-700 flex items-center gap-1"><Edit2 size={14} /> Edit</button>
+                              <button onClick={() => handleDeleteReview(review.id)} disabled={updating} className="text-red-500 hover:text-red-700 flex items-center gap-1"><Trash2 size={14} /> Delete</button>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

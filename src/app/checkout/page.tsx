@@ -44,6 +44,7 @@ export default function CheckoutPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   // Form state
   const [name, setName] = useState('');
@@ -60,6 +61,32 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     setMounted(true);
+
+    const savedFormData = localStorage.getItem('checkoutFormData');
+    if (savedFormData) {
+      try {
+        const parsed = JSON.parse(savedFormData);
+        if (parsed.name) setName(parsed.name);
+        if (parsed.phone) setPhone(parsed.phone);
+        if (parsed.email) setEmail(parsed.email);
+        if (parsed.address) setAddress(parsed.address);
+        if (parsed.city) setCity(parsed.city);
+        if (parsed.state) setState(parsed.state);
+        if (parsed.pincode) setPincode(parsed.pincode);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    
+    // Check for URL errors safely on client
+    const params = new URLSearchParams(window.location.search);
+    const errorParam = params.get('error');
+    if (errorParam) {
+      setPaymentError(errorParam);
+      // Clean up URL without reloading
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     const savedCart = localStorage.getItem('cart');
     if (savedCart) {
       const parsedCart = JSON.parse(savedCart);
@@ -128,6 +155,11 @@ export default function CheckoutPage() {
     e.preventDefault();
     setLoading(true);
 
+    // Save form data for recovery in case of payment failure
+    localStorage.setItem('checkoutFormData', JSON.stringify({
+      name, phone, email, address, city, state, pincode
+    }));
+
     const orderData = {
       customer_name: name,
       customer_phone: phone,
@@ -158,10 +190,9 @@ export default function CheckoutPage() {
       if (response.ok) {
         if (paymentMethod === 'online') {
           if (data.payu_params) {
-            // Clear cart before leaving — PayU will handle the redirect back
-            localStorage.removeItem('cart');
-            window.dispatchEvent(new Event('cartUpdated'));
             // Auto-submit hidden form to PayU's payment page
+            // Note: Cart is intentionally NOT cleared here. It will be cleared
+            // on the success page so users don't lose items if payment fails.
             submitPayUForm(data.payu_params);
           } else {
             // Fallback: payment gateway unavailable, order saved as COD
@@ -211,6 +242,25 @@ export default function CheckoutPage() {
         >
           Checkout
         </h1>
+
+        {paymentError === 'payment_failed' && (
+          <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl mb-6">
+            <p className="font-semibold flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+              Payment Failed
+            </p>
+            <p className="text-sm mt-1">Your previous payment attempt was unsuccessful. Your cart has been preserved so you can try again or choose a different payment method.</p>
+          </div>
+        )}
+        {paymentError === 'verification_failed' && (
+          <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl mb-6">
+            <p className="font-semibold flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+              Security Verification Failed
+            </p>
+            <p className="text-sm mt-1">We could not verify the payment response from the gateway. Please try again.</p>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 lg:grid-cols-3" style={{ gap: '32px' }}>
