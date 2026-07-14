@@ -195,7 +195,7 @@ export default function ProductDetailClient({ product, reviews }: ProductDetailC
 
             {/* Details */}
             <div className="bg-white max-w-6xl rounded-2xl p-6 shadow-lg lg:p-8">
-              <span className="text-sm text-pink-500 font-medium uppercase tracking-wide">
+              <span className="text-xs md:text-sm text-pink-500 font-medium uppercase tracking-wide">
                 {product.category}
               </span>
               <h1 className="text-2xl font-bold text-gray-900 mt-2 lg:text-3xl">

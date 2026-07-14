@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ShoppingCart, Menu, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import OfferBanner from './OfferBanner';
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -35,9 +36,11 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 shadow-md" style={{ backgroundColor: '#ef517e' }}>
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+    <>
+      <OfferBanner />
+      <header className="sticky top-0 z-50 shadow-md" style={{ backgroundColor: '#ef517e' }}>
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center">
             <Image
@@ -148,6 +151,7 @@ export default function Header() {
           </nav>
         )}
       </div>
-    </header>
+      </header>
+    </>
   );
 }
