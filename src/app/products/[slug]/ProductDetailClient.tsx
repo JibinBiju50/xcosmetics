@@ -76,6 +76,12 @@ export default function ProductDetailClient({ product, reviews }: ProductDetailC
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!reviewName.trim()) {
+      alert('Please enter your name');
+      return;
+    }
+    
     setSubmitting(true);
 
     try {
@@ -318,7 +324,7 @@ export default function ProductDetailClient({ product, reviews }: ProductDetailC
               <form onSubmit={handleSubmitReview} className="mb-8 p-4 bg-gray-50 rounded-xl">
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Your Name
+                    Your Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"

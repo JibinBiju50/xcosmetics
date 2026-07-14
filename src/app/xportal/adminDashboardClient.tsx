@@ -68,6 +68,7 @@ export default function AdminDashboardClient({ orders: initialOrders, reviews: i
   const [reviewProductFilter, setReviewProductFilter] = useState<string>('all');
   const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
   const [editingReviewData, setEditingReviewData] = useState<Partial<Review>>({});
+  const [deletingReviewId, setDeletingReviewId] = useState<string | null>(null);
   const [orders, setOrders] = useState(initialOrders);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -151,37 +152,58 @@ ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
     setUpdating(false);
   };
 
-  const handleDeleteReview = async (reviewId: string) => {
-    if (!window.confirm('Are you sure you want to delete this review?')) return;
+  const handleDeleteReview = (reviewId: string) => {
+    setDeletingReviewId(reviewId);
+  };
+
+  const confirmDeleteReview = async () => {
+    if (!deletingReviewId) return;
     setUpdating(true);
-    const { error } = await supabase.from('reviews').delete().eq('id', reviewId);
-    if (!error) {
-      setReviews(reviews.filter(r => r.id !== reviewId));
-    } else {
+    
+    try {
+      const res = await fetch(`/api/reviews/${deletingReviewId}`, {
+        method: 'DELETE',
+      });
+      
+      if (res.ok) {
+        setReviews(reviews.filter(r => r.id !== deletingReviewId));
+        setDeletingReviewId(null);
+      } else {
+        alert('Failed to delete review');
+      }
+    } catch (e) {
       alert('Failed to delete review');
     }
+    
     setUpdating(false);
   };
 
   const handleUpdateReview = async (reviewId: string) => {
     setUpdating(true);
-    const { error } = await supabase
-      .from('reviews')
-      .update({
-        customer_name: editingReviewData.customer_name,
-        rating: editingReviewData.rating,
-        comment: editingReviewData.comment,
-      })
-      .eq('id', reviewId);
+    
+    try {
+      const res = await fetch(`/api/reviews/${reviewId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer_name: editingReviewData.customer_name,
+          rating: editingReviewData.rating,
+          comment: editingReviewData.comment,
+        })
+      });
 
-    if (!error) {
-      setReviews(reviews.map(r => 
-        r.id === reviewId ? { ...r, ...editingReviewData } : r
-      ));
-      setEditingReviewId(null);
-    } else {
+      if (res.ok) {
+        setReviews(reviews.map(r => 
+          r.id === reviewId ? { ...r, ...editingReviewData } : r
+        ));
+        setEditingReviewId(null);
+      } else {
+        alert('Failed to update review');
+      }
+    } catch (e) {
       alert('Failed to update review');
     }
+    
     setUpdating(false);
   };
 
@@ -717,6 +739,35 @@ ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deletingReviewId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6">
+            <div className="flex items-center gap-3 text-red-500 mb-4">
+              <AlertTriangle size={24} />
+              <h3 className="text-lg font-bold text-gray-900">Delete Review</h3>
+            </div>
+            <p className="text-gray-600 mb-6">Are you sure you want to delete this review? This action cannot be undone.</p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeletingReviewId(null)}
+                disabled={updating}
+                className="px-4 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteReview}
+                disabled={updating}
+                className="px-4 py-2 bg-red-500 text-white font-medium hover:bg-red-600 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                {updating ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
