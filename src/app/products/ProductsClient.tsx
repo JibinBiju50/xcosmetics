@@ -145,7 +145,7 @@ export default function ProductsClient({
       </div>
 
       {/* Products Grid */}
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 lg:px-8 py-8">
         {/* Results count */}
         <p className="text-gray-600 mb-6">
           Showing {filteredProducts.length} products

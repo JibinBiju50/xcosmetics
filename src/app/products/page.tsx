@@ -25,9 +25,9 @@ async function getProducts(): Promise<Product[]> {
   // Override face cream images
   const faceCream = products.find(p => p.slug === 'face-cream');
   if (faceCream) {
-    faceCream.image_url = '/images/face_cream_creamx/cream_img1.PNG';
+    faceCream.image_url = '/images/face_cream_creamx/cream_img1_new.PNG';
     faceCream.original_price = 899;
-    faceCream.offer_price = 720;
+    faceCream.offer_price = 749;
     faceCream.images = [
       '/images/face_cream_creamx/cream_img2.JPG',
       '/images/face_cream_creamx/cream_img3.JPG',

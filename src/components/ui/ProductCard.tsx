@@ -41,7 +41,7 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
             src={product.image_url || '/images/placeholder.jpg'}
             alt={product.name}
             fill
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
+            className="object-fill group-hover:scale-105 transition-transform duration-300"
           />
         </div>
       </Link>
@@ -60,7 +60,7 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
         <Link href={productUrl}>
           <h3
             className="font-semibold text-gray-800 hover:text-pink-600 transition-colors line-clamp-2 text-sm leading-snug"
-            style={{ marginBottom: '8px', minHeight: '36px' }}
+            style={{ marginBottom: '4px', minHeight: '24px' }}
           >
             {product.name}
           </h3>
