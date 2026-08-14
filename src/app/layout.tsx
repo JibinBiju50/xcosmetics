@@ -70,7 +70,7 @@ export default function RootLayout({
         <main className="min-h-screen">{children}</main>
         <Footer />
         {/* Replace with your actual WhatsApp number */}
-        <WhatsAppFloat phoneNumber="917592971028" />
+        <WhatsAppFloat phoneNumber="918089641028" />
       </body>
     </html>
   );
