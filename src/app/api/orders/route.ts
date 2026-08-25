@@ -29,10 +29,26 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createServerSupabaseClient();
     const orderId = generateOrderId();
+    // Helper to calculate item price securely on the server
+    const getItemUnitPrice = (item: any, method: string) => {
+      const isFaceCream =
+        item.product_id === 'face-cream' ||
+        item.slug === 'face-cream' ||
+        String(item.name).toLowerCase().includes('face cream');
+      if (method === 'cod' && isFaceCream) {
+        return 799;
+      }
+      return Number(item.price);
+    };
+
+    const calculated_items = items.map((item: any) => ({
+      ...item,
+      price: getItemUnitPrice(item, payment_method),
+    }));
 
     // Calculate totals securely on the server
-    const calculated_subtotal = items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
-    const calculated_shipping_charge = payment_method === 'cod' ? 140 : (courier_service === 'dtdc' ? 60 : 0);
+    const calculated_subtotal = calculated_items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
+    const calculated_shipping_charge = payment_method === 'cod' ? 100 : (courier_service === 'dtdc' ? 60 : 0);
     const calculated_total = calculated_subtotal + calculated_shipping_charge;
 
     // Create order in database
@@ -44,7 +60,7 @@ export async function POST(request: NextRequest) {
         customer_phone,
         customer_email,
         shipping_address,
-        items,
+        items: calculated_items,
         subtotal: calculated_subtotal,
         shipping_charge: calculated_shipping_charge,
         total: calculated_total,
@@ -61,68 +77,50 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create order' }, { status: 500 });
     }
 
-    // ── Online payment: generate PayU params ──────────────────────────────────
-    if (payment_method === 'online') {
-      try {
-        // PayU requires amount as a string with exactly 2 decimal places
-        const amountStr = Number(calculated_total).toFixed(2);
+    // ── Generate PayU params for both Online and Partial COD ────────────────────
+    try {
+      // For COD, charge the ₹100 advance shipping fee; for Online, charge full total
+      const payableAmount = payment_method === 'cod' ? calculated_shipping_charge : calculated_total;
+      const amountStr = Number(payableAmount).toFixed(2);
 
-        // PayU's `firstname` field should contain only the first name
-        const firstname = String(customer_name).split(' ')[0];
+      // PayU's `firstname` field should contain only the first name
+      const firstname = String(customer_name).trim().split(' ')[0] || 'Customer';
+      const productinfo = payment_method === 'cod' ? 'xcosmetics COD Advance Delivery Fee' : 'xcosmetics order';
 
-        const hash = generatePayUHash({
-          txnid: orderId,
-          amount: amountStr,
-          productinfo: 'xcosmetics order',
-          firstname,
-          email: customer_email,
-          udf1: orderId, // store orderId for retrieval in callback
-        });
+      const hash = generatePayUHash({
+        txnid: orderId,
+        amount: amountStr,
+        productinfo,
+        firstname,
+        email: customer_email,
+        udf1: orderId, // store orderId for retrieval in callback
+      });
 
-        const payuParams: PayUFormParams = {
-          key: getMerchantKey(),
-          txnid: orderId,
-          amount: amountStr,
-          productinfo: 'xcosmetics order',
-          firstname,
-          email: customer_email,
-          phone: customer_phone,
-          surl: `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/callback`,
-          furl: `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/callback`,
-          udf1: orderId,
-          hash,
-          action: getPayUUrl(),
-        };
+      const payuParams: PayUFormParams = {
+        key: getMerchantKey(),
+        txnid: orderId,
+        amount: amountStr,
+        productinfo,
+        firstname,
+        email: customer_email,
+        phone: customer_phone,
+        surl: `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/callback`,
+        furl: `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/callback`,
+        udf1: orderId,
+        hash,
+        action: getPayUUrl(),
+      };
 
-        return NextResponse.json({
-          order_id: orderId,
-          payu_params: payuParams,
-        });
-      } catch (payuError) {
-        console.error('PayU hash generation error:', payuError);
-        // Graceful fallback — treat as COD
-        return NextResponse.json({
-          order_id: orderId,
-          message: 'Payment gateway error. Order placed as COD.',
-        });
-      }
+      return NextResponse.json({
+        order_id: orderId,
+        payu_params: payuParams,
+      });
+    } catch (payuError) {
+      console.error('PayU hash generation error:', payuError);
+      return NextResponse.json({
+        error: 'Failed to initialize payment gateway. Please try again.',
+      }, { status: 500 });
     }
-
-    // ── COD: send confirmation email immediately ───────────────────────────────
-    await sendOrderConfirmation({
-      orderId,
-      customerName: customer_name,
-      customerEmail: customer_email,
-      items,
-      subtotal: calculated_subtotal,
-      shippingCharge: calculated_shipping_charge,
-      total: calculated_total,
-      shippingAddress: shipping_address,
-      paymentMethod: payment_method,
-      courierService: courier_service,
-    });
-
-    return NextResponse.json({ order_id: orderId });
   } catch (error) {
     console.error('Order API error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

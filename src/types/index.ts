@@ -34,6 +34,8 @@ export interface Order {
   subtotal: number;
   shipping_charge: number;
   total: number;
+  advance_paid_amount?: number;
+  balance_cod_amount?: number;
   payment_method: 'online' | 'cod';
   payment_status: 'pending' | 'paid' | 'failed';
   courier_service: 'dtdc' | 'postal';

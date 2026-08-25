@@ -44,6 +44,14 @@ export default async function OrderConfirmationPage({ params }: PageProps) {
   const orderItems = order.items as OrderItem[];
   const totalItems = orderItems.reduce((sum, item) => sum + item.quantity, 0);
 
+  const isCod = order.payment_method === 'cod';
+  const advancePaid = order.advance_paid_amount ?? (isCod ? order.shipping_charge : order.total);
+  const balanceCod = order.balance_cod_amount ?? (isCod ? order.subtotal : 0);
+
+  const whatsappMessage = encodeURIComponent(
+    `Hi creamXstore, I just placed order #${order.order_id} (${isCod ? `Partial COD - ₹${advancePaid} advance paid` : 'Prepaid'}). Please share updates!`
+  );
+
   return (
     <div className="min-h-screen bg-gray-50 py-12">
       <ClearCart />
@@ -117,28 +125,42 @@ export default async function OrderConfirmationPage({ params }: PageProps) {
               <span>{formatPrice(order.subtotal)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Shipping ({order.courier_service?.toUpperCase()})</span>
+              <span className="text-gray-600">
+                {isCod ? 'Advance Delivery Fee (Paid Online)' : `Shipping (${order.courier_service?.toUpperCase()})`}
+              </span>
               <span>{formatPrice(order.shipping_charge)}</span>
             </div>
             <div className="flex justify-between text-lg font-bold pt-2 border-t">
-              <span>Total</span>
+              <span>Order Total</span>
               <span className="text-pink-500">{formatPrice(order.total)}</span>
             </div>
           </div>
 
-          {/* Payment Info */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-xl">
-            <p className="text-sm text-gray-600">
-              <span className="font-medium">Payment Method:</span>{' '}
-              {order.payment_method === 'cod' ? 'Cash on Delivery' : 'Paid Online'}
-            </p>
-            <p className="text-sm text-gray-600 mt-1">
-              <span className="font-medium">Payment Status:</span>{' '}
-              <span className={order.payment_status === 'paid' ? 'text-green-600' : 'text-orange-600'}>
-                {order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1)}
-              </span>
-            </p>
-          </div>
+          {/* Payment Info Card */}
+          {isCod ? (
+            <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-2">
+              <div className="flex justify-between items-center text-sm font-semibold text-amber-900">
+                <span>Advance Delivery Fee:</span>
+                <span className="text-green-600">₹{formatPrice(advancePaid)} (PAID ✓)</span>
+              </div>
+              <div className="flex justify-between items-center text-base font-bold text-amber-800 pt-2 border-t border-amber-200">
+                <span>Cash to Pay on Delivery:</span>
+                <span className="text-pink-600">{formatPrice(balanceCod)}</span>
+              </div>
+              <p className="text-xs text-amber-700 mt-1">
+                Please keep {formatPrice(balanceCod)} ready in cash when the delivery executive arrives.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-xl">
+              <p className="text-sm font-semibold text-green-900">
+                ✓ Full Payment Received Online: {formatPrice(order.total)}
+              </p>
+              <p className="text-xs text-green-700 mt-1">
+                Zero doorstep payment required. Your order will be dispatched with priority!
+              </p>
+            </div>
+          )}
 
           {/* Shipping Address */}
           <div className="mt-6">
@@ -158,15 +180,23 @@ export default async function OrderConfirmationPage({ params }: PageProps) {
 
         {/* Actions */}
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+          <a
+            href={`https://wa.me/918089641028?text=${whatsappMessage}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl font-semibold text-center transition-colors flex items-center justify-center gap-2 shadow-sm"
+          >
+            Track / Support on WhatsApp
+          </a>
           <Link
             href="/products"
-            className="bg-pink-500 hover:bg-pink-600 text-white px-6 py-3 rounded-lg font-semibold text-center transition-colors"
+            className="bg-pink-500 hover:bg-pink-600 text-white px-6 py-3 rounded-xl font-semibold text-center transition-colors"
           >
             Continue Shopping
           </Link>
           <Link
             href="/"
-            className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-semibold text-center transition-colors"
+            className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-semibold text-center transition-colors"
           >
             Back to Home
           </Link>

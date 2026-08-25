@@ -75,14 +75,31 @@ export async function sendOrderConfirmation(data: OrderEmailData) {
             <td style="text-align: right;">₹${data.subtotal.toFixed(2)}</td>
           </tr>
           <tr>
-            <td style="padding: 4px 0;">Shipping (${data.courierService.toUpperCase()})</td>
+            <td style="padding: 4px 0;">${data.paymentMethod === 'cod' ? 'Advance Courier Fee (Paid Online)' : `Shipping (${data.courierService.toUpperCase()})`}</td>
             <td style="text-align: right;">₹${data.shippingCharge.toFixed(2)}</td>
           </tr>
           <tr>
-            <td style="padding: 8px 0; border-top: 2px solid #ec4899;" class="total">Total</td>
+            <td style="padding: 8px 0; border-top: 2px solid #ec4899;" class="total">Order Total</td>
             <td style="padding: 8px 0; border-top: 2px solid #ec4899; text-align: right;" class="total">₹${data.total.toFixed(2)}</td>
           </tr>
         </table>
+
+        ${data.paymentMethod === 'cod' ? `
+        <div style="background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #f59e0b; padding: 14px; border-radius: 6px; margin: 20px 0;">
+          <p style="margin: 0; color: #92400e; font-weight: bold;">📦 Cash on Delivery Breakdown:</p>
+          <p style="margin: 6px 0 0; color: #78350f; font-size: 14px;">
+            • Advance Courier Fee: <strong>₹${data.shippingCharge.toFixed(2)} (PAID ONLINE ✓)</strong><br>
+            • Balance to Pay Courier at Doorstep: <strong style="color: #b45309; font-size: 16px;">₹${data.subtotal.toFixed(2)} (in CASH)</strong>
+          </p>
+        </div>
+        ` : `
+        <div style="background: #f0fdf4; border: 1px solid #dcfce7; border-left: 4px solid #22c55e; padding: 14px; border-radius: 6px; margin: 20px 0;">
+          <p style="margin: 0; color: #166534; font-weight: bold;">✓ 100% Prepaid Order</p>
+          <p style="margin: 4px 0 0; color: #15803d; font-size: 14px;">
+            Full amount of ₹${data.total.toFixed(2)} paid online. Nothing to pay upon delivery!
+          </p>
+        </div>
+        `}
 
         <h3>Shipping Address</h3>
         <p style="background: #f9fafb; padding: 15px; border-radius: 8px;">
@@ -90,7 +107,7 @@ export async function sendOrderConfirmation(data: OrderEmailData) {
         </p>
 
         <p style="margin-top: 20px;">
-          <strong>Payment Method:</strong> ${data.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Paid Online'}
+          <strong>Payment Method:</strong> ${data.paymentMethod === 'cod' ? 'Cash on Delivery (Partial Advance Paid)' : 'Paid Online (100% Prepaid)'}
         </p>
 
         <p style="margin-top: 30px;">

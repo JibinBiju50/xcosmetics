@@ -48,12 +48,20 @@ interface Order {
   subtotal: number;
   shipping_charge: number;
   total: number;
+  advance_paid_amount?: number;
+  balance_cod_amount?: number;
   payment_method: 'online' | 'cod';
   payment_status: 'pending' | 'paid' | 'failed';
   order_status: 'not_yet_shipped' | 'shipped' | 'delivered';
   courier_service: 'dtdc' | 'postal';
   created_at: string;
 }
+
+const getAdvancePaid = (order: Order) =>
+  order.advance_paid_amount ?? (order.payment_method === 'cod' ? order.shipping_charge : order.total);
+
+const getBalanceCod = (order: Order) =>
+  order.balance_cod_amount ?? (order.payment_method === 'cod' ? order.subtotal : 0);
 
 interface AdminDashboardClientProps {
   orders: Order[];
@@ -95,14 +103,19 @@ export default function AdminDashboardClient({ orders: initialOrders, reviews: i
 
   const handleCopy = () => {
     if (!selectedOrder) return;
+    const isCod = selectedOrder.payment_method === 'cod';
+    const advance = getAdvancePaid(selectedOrder);
+    const balance = getBalanceCod(selectedOrder);
+
     const text = `Order ID: ${selectedOrder.order_id}
 Name: ${selectedOrder.customer_name}
 Phone: ${selectedOrder.customer_phone}
 Email: ${selectedOrder.customer_email}
 Address: ${selectedOrder.shipping_address}
 Courier: ${selectedOrder.courier_service.toUpperCase()}
-Total: ${formatPrice(selectedOrder.total)}
-Payment: ${selectedOrder.payment_method.toUpperCase()} (${selectedOrder.payment_status})
+Order Total: ${formatPrice(selectedOrder.total)}
+Payment: ${isCod ? `Partial COD (Advance: ${formatPrice(advance)} - ${selectedOrder.payment_status.toUpperCase()})` : `100% Prepaid (${selectedOrder.payment_status.toUpperCase()})`}
+${isCod ? `>>> COLLECT ON DELIVERY (CASH): ${formatPrice(balance)} <<<` : '>>> COLLECT ON DELIVERY: ₹0 (Prepaid) <<<'}
 Items:
 ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
     
@@ -245,8 +258,8 @@ ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
     pending: orders.filter(o => o.order_status === 'not_yet_shipped').length,
     shipped: orders.filter(o => o.order_status === 'shipped').length,
     delivered: orders.filter(o => o.order_status === 'delivered').length,
-    unpaidOnline: orders.filter(
-      o => o.payment_method === 'online' && (o.payment_status === 'pending' || o.payment_status === 'failed')
+    unpaid: orders.filter(
+      o => o.payment_status === 'pending' || o.payment_status === 'failed'
     ).length,
   };
 
@@ -401,51 +414,79 @@ ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
               </div>
             ) : (
               paginatedOrders.map((order) => {
-                const isProblem = order.payment_method === 'online' && (order.payment_status === 'pending' || order.payment_status === 'failed');
+                const isCod = order.payment_method === 'cod';
+                const isPaid = order.payment_status === 'paid';
+                const isProblem = !isPaid;
+                const balanceCod = getBalanceCod(order);
+
                 return (
                   <div
                     key={order.id}
                     onClick={() => setSelectedOrder(order)}
                     className={`${
-                      isProblem ? 'bg-red-50 border-2 border-red-200' : 'bg-white shadow-sm'
-                    } rounded-xl cursor-pointer transition-all hover:shadow-md ${
+                      isProblem ? 'bg-red-50/60 border-2 border-red-300' : 'bg-white shadow-sm'
+                    } rounded-2xl cursor-pointer transition-all hover:shadow-md ${
                       selectedOrder?.id === order.id ? (isProblem ? 'ring-2 ring-red-500' : 'ring-2 ring-pink-500') : ''
                     }`}
-                    style={{ padding: '20px' }}
+                    style={{ padding: '22px' }}
                   >
-                    <div className="flex items-start justify-between mb-2">
+                    {/* Top Row: Order ID & Shipping Status Badge */}
+                    <div className="flex items-center justify-between gap-2 mb-2.5">
                       <div>
-                        <p className={`font-bold ${isProblem ? 'text-red-600' : 'text-pink-500'}`}>{order.order_id}</p>
-                        <p className="text-sm text-gray-600">{order.customer_name}</p>
+                        <p className={`text-base font-extrabold ${isProblem ? 'text-red-700' : 'text-pink-600'}`}>
+                          {order.order_id}
+                        </p>
+                        <p className="text-base font-semibold text-gray-900 mt-0.5">
+                          {order.customer_name}
+                        </p>
                       </div>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        isProblem ? 'bg-red-100 text-red-700' :
-                        order.order_status === 'delivered' ? 'bg-green-100 text-green-700' :
-                        order.order_status === 'shipped' ? 'bg-blue-100 text-blue-700' :
-                        'bg-orange-100 text-orange-700'
+                      <span className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold tracking-wide uppercase shadow-xs ${
+                        isProblem ? 'bg-red-200 text-red-900 border border-red-300' :
+                        order.order_status === 'delivered' ? 'bg-green-100 text-green-800 border border-green-300' :
+                        order.order_status === 'shipped' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
+                        'bg-orange-100 text-orange-900 border border-orange-300'
                       }`}>
-                        {isProblem ? (order.payment_status === 'failed' ? '✕ Failed' : '⏳ Unpaid') : order.order_status.replace('_', ' ')}
+                        {isProblem ? (order.payment_status === 'failed' ? '✕ FAILED' : '⏳ ADVANCE UNPAID') : order.order_status.replace('_', ' ')}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-500">
-                        {isMounted ? new Date(order.created_at).toLocaleDateString() : '...'}
+
+                    {/* Middle Row: Date & Order Total */}
+                    <div className="flex items-center justify-between text-sm sm:text-base py-1">
+                      <span className="text-gray-500 font-medium">
+                        {isMounted ? new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '...'}
                       </span>
-                      <span className="font-semibold">{formatPrice(order.total)}</span>
+                      <span className="text-base sm:text-lg font-bold text-gray-900">
+                        Total: {formatPrice(order.total)}
+                      </span>
                     </div>
-                    <div className="flex items-center gap-2 mt-2">
-                      {order.payment_method === 'cod' ? (
-                        <span className="flex items-center gap-1 text-xs text-gray-500">
-                          <Banknote size={14} /> COD
-                        </span>
-                      ) : (
-                        <span className={`flex items-center gap-1 text-xs ${isProblem ? 'text-red-500' : 'text-gray-500'}`}>
-                          <CreditCard size={14} /> Online {isProblem && `— ${order.payment_status}`}
-                        </span>
-                      )}
-                      {!isProblem && (
-                        <span className={`text-xs ${order.payment_status === 'paid' ? 'text-green-600' : 'text-orange-600'}`}>
-                          {order.payment_status}
+
+                    {/* Bottom Row: Payment Mode & Collectible Cash Badge */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 mt-2 pt-2.5 border-t border-gray-200">
+                      <div className="flex items-center">
+                        {isCod ? (
+                          <span className={`flex items-center gap-1.5 text-xs sm:text-sm font-bold px-3 py-1.5 rounded-lg ${
+                            isPaid
+                              ? 'text-emerald-900 bg-emerald-100 border border-emerald-300'
+                              : 'text-red-800 bg-red-100 border border-red-300'
+                          }`}>
+                            <Banknote size={16} />
+                            COD ({isPaid ? 'Advance Paid ✓' : 'Advance Pending'})
+                          </span>
+                        ) : (
+                          <span className={`flex items-center gap-1.5 text-xs sm:text-sm font-bold px-3 py-1.5 rounded-lg ${
+                            isPaid
+                              ? 'text-green-900 bg-green-100 border border-green-300'
+                              : 'text-red-800 bg-red-100 border border-red-300'
+                          }`}>
+                            <CreditCard size={16} />
+                            Prepaid {isPaid ? '(100% Paid ✓)' : `(${order.payment_status.toUpperCase()})`}
+                          </span>
+                        )}
+                      </div>
+
+                      {isCod && isPaid && (
+                        <span className="text-xs sm:text-sm font-black text-pink-700 bg-pink-100/80 px-3 py-1.5 rounded-lg border border-pink-300 shadow-xs">
+                          COLLECT CASH: {formatPrice(balanceCod)}
                         </span>
                       )}
                     </div>
@@ -506,22 +547,50 @@ ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                  {/* Warning for unpaid online orders */}
-                  {selectedOrder.payment_method === 'online' && selectedOrder.payment_status !== 'paid' && (
+                  {/* Warning for unpaid orders */}
+                  {selectedOrder.payment_status !== 'paid' && (
                     <div className="bg-red-100 border-2 border-red-400 rounded-xl flex items-center gap-3" style={{ padding: '14px 18px' }}>
                       <AlertTriangle size={22} className="text-red-600 flex-shrink-0" />
                       <div>
                         <p className="font-bold text-red-800 text-sm">⚠ DO NOT SHIP — Payment not received</p>
                         <p className="text-xs text-red-600">
-                          This customer selected online payment but {selectedOrder.payment_status === 'failed' ? 'the payment failed' : 'did not complete it'}.
+                          {selectedOrder.payment_method === 'cod'
+                            ? 'The customer did not complete the ₹100 advance delivery fee.'
+                            : 'This customer selected online payment but the transaction failed or was abandoned.'}
                         </p>
                       </div>
                     </div>
                   )}
 
-                  <div>
-                    <p className="text-sm text-gray-500">Order ID</p>
-                    <p className="font-bold text-pink-500">{selectedOrder.order_id}</p>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-sm text-gray-500">Order ID</p>
+                      <p className="font-bold text-pink-500 text-xl">{selectedOrder.order_id}</p>
+                    </div>
+                    {/* 1-Click WhatsApp Trigger */}
+                    {(() => {
+                      const isCod = selectedOrder.payment_method === 'cod';
+                      const balance = getBalanceCod(selectedOrder);
+                      const advance = getAdvancePaid(selectedOrder);
+                      const phoneDigits = selectedOrder.customer_phone.replace(/\D/g, '');
+                      const formattedPhone = phoneDigits.startsWith('91') ? phoneDigits : `91${phoneDigits}`;
+                      const waText = encodeURIComponent(
+                        isCod
+                          ? `Hi ${selectedOrder.customer_name}, thank you for your order #${selectedOrder.order_id} at creamXstore!\n\n• Advance delivery charge received: ₹${advance} ✓\n• Balance amount payable in CASH upon delivery: ${formatPrice(balance)}\n\nWe will share your tracking details once dispatched.`
+                          : `Hi ${selectedOrder.customer_name}, thank you for your payment to creamXstore!\n\nYour order #${selectedOrder.order_id} is confirmed (100% Prepaid).\n• Total Paid: ${formatPrice(selectedOrder.total)}\n• Amount on Delivery: ₹0\n\nWe will share your tracking details once dispatched.`
+                      );
+                      return (
+                        <a
+                          href={`https://wa.me/${formattedPhone}?text=${waText}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 px-3 py-2 rounded-lg transition-colors shadow-sm"
+                        >
+                          <MessageSquare size={15} />
+                          WhatsApp Customer
+                        </a>
+                      );
+                    })()}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-b pb-4">
@@ -559,21 +628,48 @@ ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
                   </div>
 
                   <div>
-                    <p className="text-sm text-gray-500 mb-2">Items</p>
+                    <p className="text-sm text-gray-500 mb-2 font-medium">Items</p>
                     {selectedOrder.items.map((item, i) => (
                       <div key={i} className="flex justify-between text-sm py-1 border-b">
                         <span>{item.name} × {item.quantity}</span>
                         <span>{formatPrice(item.price * item.quantity)}</span>
                       </div>
                     ))}
-                    <div className="flex justify-between text-sm py-1">
-                      <span>Shipping</span>
+                    <div className="flex justify-between text-sm py-1.5">
+                      <span className="text-gray-600">Subtotal</span>
+                      <span>{formatPrice(selectedOrder.subtotal)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm py-1.5">
+                      <span className="text-gray-600">
+                        {selectedOrder.payment_method === 'cod' ? 'Advance Delivery Fee' : 'Shipping'}
+                      </span>
                       <span>{formatPrice(selectedOrder.shipping_charge)}</span>
                     </div>
                     <div className="flex justify-between font-bold pt-2 border-t">
-                      <span>Total</span>
-                      <span className="text-pink-500">{formatPrice(selectedOrder.total)}</span>
+                      <span>Order Total</span>
+                      <span className="text-gray-900">{formatPrice(selectedOrder.total)}</span>
                     </div>
+
+                    {/* Financial Split Card for Packing Staff */}
+                    {selectedOrder.payment_method === 'cod' ? (
+                      <div className="mt-3 p-3.5 bg-amber-50 border border-amber-200 rounded-xl space-y-1.5">
+                        <div className="flex justify-between text-xs text-amber-900">
+                          <span>Advance Delivery Fee (Online):</span>
+                          <span className="font-bold text-green-700">
+                            {formatPrice(getAdvancePaid(selectedOrder))} ({selectedOrder.payment_status.toUpperCase()})
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm font-bold text-pink-700 pt-1 border-t border-amber-200">
+                          <span>COLLECT ON DELIVERY (CASH):</span>
+                          <span className="text-base">{formatPrice(getBalanceCod(selectedOrder))}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-xl text-xs font-semibold text-green-800 flex justify-between">
+                        <span>100% PREPAID ONLINE:</span>
+                        <span>COLLECT AT DOOR: ₹0</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Status Controls */}
@@ -588,7 +684,7 @@ ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
                             disabled={
                               updating ||
                               selectedOrder.order_status === status ||
-                              (status !== 'not_yet_shipped' && selectedOrder.payment_method === 'online' && selectedOrder.payment_status !== 'paid')
+                              (status !== 'not_yet_shipped' && selectedOrder.payment_status !== 'paid')
                             }
                             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${selectedOrder.order_status === status
                               ? status === 'delivered'
@@ -608,33 +704,43 @@ ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
                       </div>
                     </div>
 
-                    {selectedOrder.payment_method === 'cod' && (
-                      <div>
-                        <p className="text-sm text-gray-500 mb-2">Payment Status (COD)</p>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => updatePaymentStatus(selectedOrder.order_id, 'pending')}
-                            disabled={updating || selectedOrder.payment_status === 'pending'}
-                            className={`px-3 py-1.5 rounded-lg text-sm font-medium ${selectedOrder.payment_status === 'pending'
-                              ? 'bg-orange-500 text-white'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                              }`}
-                          >
-                            Pending
-                          </button>
-                          <button
-                            onClick={() => updatePaymentStatus(selectedOrder.order_id, 'paid')}
-                            disabled={updating || selectedOrder.payment_status === 'paid'}
-                            className={`px-3 py-1.5 rounded-lg text-sm font-medium ${selectedOrder.payment_status === 'paid'
-                              ? 'bg-green-500 text-white'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                              }`}
-                          >
-                            Paid
-                          </button>
-                        </div>
+                    <div>
+                      <p className="text-sm text-gray-500 mb-2">
+                        {selectedOrder.payment_method === 'cod' ? 'Advance Payment Status (COD)' : 'Payment Status (Online)'}
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => updatePaymentStatus(selectedOrder.order_id, 'pending')}
+                          disabled={updating || selectedOrder.payment_status === 'pending'}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-medium ${selectedOrder.payment_status === 'pending'
+                            ? 'bg-orange-500 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                        >
+                          Pending
+                        </button>
+                        <button
+                          onClick={() => updatePaymentStatus(selectedOrder.order_id, 'paid')}
+                          disabled={updating || selectedOrder.payment_status === 'paid'}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-medium ${selectedOrder.payment_status === 'paid'
+                            ? 'bg-green-500 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                        >
+                          Paid
+                        </button>
+                        <button
+                          onClick={() => updatePaymentStatus(selectedOrder.order_id, 'failed')}
+                          disabled={updating || selectedOrder.payment_status === 'failed'}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-medium ${selectedOrder.payment_status === 'failed'
+                            ? 'bg-red-500 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                        >
+                          Failed
+                        </button>
                       </div>
-                    )}
+                    </div>
                   </div>
                 </div>
               </div>

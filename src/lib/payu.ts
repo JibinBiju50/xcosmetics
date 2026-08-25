@@ -1,22 +1,29 @@
 import crypto from 'crypto';
 
-const PAYU_KEY = process.env.PAYU_MERCHANT_KEY!;
-const PAYU_SALT = process.env.PAYU_SALT!;
-const PAYU_MODE = process.env.PAYU_MODE || 'production';
+/**
+ * Returns the merchant key, sanitized of any surrounding quotes or whitespace.
+ */
+export function getMerchantKey(): string {
+  return (process.env.PAYU_MERCHANT_KEY || '').trim().replace(/['"]/g, '');
+}
+
+/**
+ * Returns the PayU salt, sanitized of any surrounding quotes or whitespace.
+ */
+export function getPayUSalt(): string {
+  return (process.env.PAYU_SALT || '').trim().replace(/['"]/g, '');
+}
 
 /**
  * Returns the correct PayU payment endpoint based on PAYU_MODE env var.
- * - test       → https://test.payu.in/_payment
- * - production → https://secure.payu.in/_payment  (PayU Biz)
+ * - test / sandbox → https://test.payu.in/_payment
+ * - production     → https://secure.payu.in/_payment  (PayU Biz)
  */
 export function getPayUUrl(): string {
-  return PAYU_MODE === 'test'
+  const rawMode = (process.env.PAYU_MODE || '').trim().toLowerCase().replace(/['"]/g, '');
+  return (rawMode === 'test' || rawMode === 'sandbox')
     ? 'https://test.payu.in/_payment'
     : 'https://secure.payu.in/_payment';
-}
-
-export function getMerchantKey(): string {
-  return PAYU_KEY;
 }
 
 interface ForwardHashParams {
@@ -41,8 +48,11 @@ interface ForwardHashParams {
  * The five empty fields after udf5 represent udf6–udf10 (unused).
  */
 export function generatePayUHash(params: ForwardHashParams): string {
+  const key = getMerchantKey();
+  const salt = getPayUSalt();
+
   const hashString = [
-    PAYU_KEY,
+    key,
     params.txnid,
     params.amount,
     params.productinfo,
@@ -54,7 +64,7 @@ export function generatePayUHash(params: ForwardHashParams): string {
     params.udf4 ?? '',
     params.udf5 ?? '',
     '', '', '', '', '', // udf6–udf10 (always empty)
-    PAYU_SALT,
+    salt,
   ].join('|');
 
   return crypto.createHash('sha512').update(hashString).digest('hex');
@@ -85,8 +95,10 @@ interface ReverseHashParams {
  * udf6–udf10 are empty in our implementation.
  */
 export function verifyPayUHash(params: ReverseHashParams): boolean {
+  const salt = getPayUSalt();
+
   const reverseHashString = [
-    PAYU_SALT,
+    salt,
     params.status,
     '', '', '', '', '', // udf10–udf6 (always empty)
     params.udf5 ?? '',
