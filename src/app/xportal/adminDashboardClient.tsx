@@ -108,13 +108,14 @@ export default function AdminDashboardClient({ orders: initialOrders, reviews: i
     const balance = getBalanceCod(selectedOrder);
 
     const text = `Order ID: ${selectedOrder.order_id}
+Payment Method: ${isCod ? 'COD (Cash on Delivery)' : 'ONLINE (100% Prepaid)'}
 Name: ${selectedOrder.customer_name}
 Phone: ${selectedOrder.customer_phone}
 Email: ${selectedOrder.customer_email}
 Address: ${selectedOrder.shipping_address}
 Courier: ${selectedOrder.courier_service.toUpperCase()}
 Order Total: ${formatPrice(selectedOrder.total)}
-Payment: ${isCod ? `Partial COD (Advance: ${formatPrice(advance)} - ${selectedOrder.payment_status.toUpperCase()})` : `100% Prepaid (${selectedOrder.payment_status.toUpperCase()})`}
+Payment Details: ${isCod ? `Partial COD (Advance Paid: ${formatPrice(advance)} - ${selectedOrder.payment_status.toUpperCase()})` : `100% Online Prepaid (${selectedOrder.payment_status.toUpperCase()})`}
 ${isCod ? `>>> COLLECT ON DELIVERY (CASH): ${formatPrice(balance)} <<<` : '>>> COLLECT ON DELIVERY: ₹0 (Prepaid) <<<'}
 Items:
 ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
@@ -430,15 +431,24 @@ ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
                     }`}
                     style={{ padding: '22px' }}
                   >
-                    {/* Top Row: Order ID & Shipping Status Badge */}
+                    {/* Top Row: Payment Type Badge, Order ID & Shipping Status Badge */}
                     <div className="flex items-center justify-between gap-2 mb-2.5">
-                      <div>
-                        <p className={`text-base font-extrabold ${isProblem ? 'text-red-700' : 'text-pink-600'}`}>
-                          {order.order_id}
-                        </p>
-                        <p className="text-base font-semibold text-gray-900 mt-0.5">
-                          {order.customer_name}
-                        </p>
+                      <div className="flex items-center gap-2.5">
+                        <span className={`px-2.5 py-1 rounded-md text-xs font-black uppercase tracking-wider ${
+                          isCod 
+                            ? 'bg-amber-500 text-white shadow-xs' 
+                            : 'bg-emerald-600 text-white shadow-xs'
+                        }`}>
+                          {isCod ? 'COD' : 'ONLINE'}
+                        </span>
+                        <div>
+                          <p className={`text-base font-extrabold ${isProblem ? 'text-red-700' : 'text-pink-600'}`}>
+                            {order.order_id}
+                          </p>
+                          <p className="text-base font-semibold text-gray-900 mt-0.5">
+                            {order.customer_name}
+                          </p>
+                        </div>
                       </div>
                       <span className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold tracking-wide uppercase shadow-xs ${
                         isProblem ? 'bg-red-200 text-red-900 border border-red-300' :
@@ -479,16 +489,20 @@ ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
                               : 'text-red-800 bg-red-100 border border-red-300'
                           }`}>
                             <CreditCard size={16} />
-                            Prepaid {isPaid ? '(100% Paid ✓)' : `(${order.payment_status.toUpperCase()})`}
+                            ONLINE ({isPaid ? '100% Paid ✓' : order.payment_status.toUpperCase()})
                           </span>
                         )}
                       </div>
 
-                      {isCod && isPaid && (
+                      {isCod && isPaid ? (
                         <span className="text-xs sm:text-sm font-black text-pink-700 bg-pink-100/80 px-3 py-1.5 rounded-lg border border-pink-300 shadow-xs">
                           COLLECT CASH: {formatPrice(balanceCod)}
                         </span>
-                      )}
+                      ) : !isCod && isPaid ? (
+                        <span className="text-xs sm:text-sm font-bold text-green-700 bg-green-50 px-2.5 py-1 rounded-lg border border-green-200">
+                          DOORSTEP: ₹0 (PREPAID)
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                 );
@@ -563,9 +577,18 @@ ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
                   )}
 
                   <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-sm text-gray-500">Order ID</p>
-                      <p className="font-bold text-pink-500 text-xl">{selectedOrder.order_id}</p>
+                    <div className="flex items-center gap-3">
+                      <div>
+                        <p className="text-sm text-gray-500 font-medium">Order ID</p>
+                        <p className="font-bold text-pink-500 text-xl">{selectedOrder.order_id}</p>
+                      </div>
+                      <span className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider ${
+                        selectedOrder.payment_method === 'cod'
+                          ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                          : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                      }`}>
+                        {selectedOrder.payment_method === 'cod' ? 'COD (Cash on Delivery)' : 'ONLINE (100% Prepaid)'}
+                      </span>
                     </div>
                     {/* 1-Click WhatsApp Trigger */}
                     {(() => {
@@ -613,15 +636,25 @@ ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
                     </div>
 
                     <div>
-                      <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Shipping Details</h3>
+                      <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Shipping & Payment</h3>
                       <div className="space-y-2 text-sm">
                         <div className="flex">
-                          <span className="text-gray-500 w-16">Address:</span>
+                          <span className="text-gray-500 w-20">Address:</span>
                           <span className="font-medium text-gray-900 leading-tight flex-1">{selectedOrder.shipping_address}</span>
                         </div>
                         <div className="flex">
-                          <span className="text-gray-500 w-16">Courier:</span>
+                          <span className="text-gray-500 w-20">Courier:</span>
                           <span className="font-medium text-gray-900 uppercase">{selectedOrder.courier_service}</span>
+                        </div>
+                        <div className="flex items-center">
+                          <span className="text-gray-500 w-20">Payment:</span>
+                          <span className={`font-bold text-xs uppercase px-2 py-0.5 rounded ${
+                            selectedOrder.payment_method === 'cod'
+                              ? 'bg-amber-100 text-amber-900'
+                              : 'bg-emerald-100 text-emerald-900'
+                          }`}>
+                            {selectedOrder.payment_method === 'cod' ? 'Cash on Delivery (Partial COD)' : 'Online (100% Prepaid)'}
+                          </span>
                         </div>
                       </div>
                     </div>
