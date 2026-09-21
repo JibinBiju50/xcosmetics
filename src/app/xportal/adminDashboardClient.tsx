@@ -25,6 +25,10 @@ import {
   Trash2,
   Edit2,
   Save,
+  Download,
+  SlidersHorizontal,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
 
@@ -63,6 +67,150 @@ const getAdvancePaid = (order: Order) =>
 const getBalanceCod = (order: Order) =>
   order.balance_cod_amount ?? (order.payment_method === 'cod' ? order.subtotal : 0);
 
+export interface ExportColumn {
+  id: string;
+  label: string;
+  category: 'Customer' | 'Order' | 'Shipping' | 'Financial';
+  getValue: (order: Order) => string | number;
+}
+
+export const EXPORT_COLUMNS: ExportColumn[] = [
+  {
+    id: 'order_id',
+    label: 'Order ID',
+    category: 'Order',
+    getValue: (o) => o.order_id,
+  },
+  {
+    id: 'created_at',
+    label: 'Date & Time',
+    category: 'Order',
+    getValue: (o) => new Date(o.created_at).toLocaleString('en-IN'),
+  },
+  {
+    id: 'customer_name',
+    label: 'Customer Name',
+    category: 'Customer',
+    getValue: (o) => o.customer_name,
+  },
+  {
+    id: 'customer_phone',
+    label: 'Customer Phone',
+    category: 'Customer',
+    getValue: (o) => o.customer_phone,
+  },
+  {
+    id: 'customer_email',
+    label: 'Customer Email',
+    category: 'Customer',
+    getValue: (o) => o.customer_email || '',
+  },
+  {
+    id: 'shipping_address',
+    label: 'Shipping Address',
+    category: 'Shipping',
+    getValue: (o) => o.shipping_address,
+  },
+  {
+    id: 'courier_service',
+    label: 'Courier Partner',
+    category: 'Shipping',
+    getValue: (o) => (o.courier_service ? o.courier_service.toUpperCase() : 'POSTAL'),
+  },
+  {
+    id: 'items',
+    label: 'Items Ordered',
+    category: 'Order',
+    getValue: (o) =>
+      o.items ? o.items.map((i) => `${i.name} (Qty: ${i.quantity}, ₹${i.price})`).join('; ') : '',
+  },
+  {
+    id: 'total_quantity',
+    label: 'Total Quantity',
+    category: 'Order',
+    getValue: (o) => (o.items ? o.items.reduce((sum, i) => sum + (i.quantity || 1), 0) : 0),
+  },
+  {
+    id: 'subtotal',
+    label: 'Product Subtotal (₹)',
+    category: 'Financial',
+    getValue: (o) => o.subtotal,
+  },
+  {
+    id: 'shipping_charge',
+    label: 'Shipping Fee (₹)',
+    category: 'Financial',
+    getValue: (o) => o.shipping_charge,
+  },
+  {
+    id: 'total',
+    label: 'Order Total (₹)',
+    category: 'Financial',
+    getValue: (o) => o.total,
+  },
+  {
+    id: 'payment_method',
+    label: 'Payment Method',
+    category: 'Financial',
+    getValue: (o) => (o.payment_method === 'cod' ? 'COD' : 'ONLINE PREPAID'),
+  },
+  {
+    id: 'payment_status',
+    label: 'Payment Status',
+    category: 'Financial',
+    getValue: (o) => o.payment_status.toUpperCase(),
+  },
+  {
+    id: 'advance_paid',
+    label: 'Advance Paid Online (₹)',
+    category: 'Financial',
+    getValue: (o) => getAdvancePaid(o),
+  },
+  {
+    id: 'balance_cod',
+    label: 'Doorstep Cash Collectible (₹)',
+    category: 'Financial',
+    getValue: (o) => (o.payment_method === 'cod' ? getBalanceCod(o) : 0),
+  },
+  {
+    id: 'order_status',
+    label: 'Fulfillment Status',
+    category: 'Shipping',
+    getValue: (o) => o.order_status.replace('_', ' ').toUpperCase(),
+  },
+];
+
+const PRESETS = {
+  courier: {
+    name: '🚚 Courier Label',
+    columns: [
+      'customer_name',
+      'customer_phone',
+      'shipping_address',
+      'courier_service',
+      'items',
+      'balance_cod',
+    ],
+  },
+  accounting: {
+    name: '📊 Accounting',
+    columns: [
+      'order_id',
+      'created_at',
+      'subtotal',
+      'shipping_charge',
+      'total',
+      'payment_method',
+      'payment_status',
+      'advance_paid',
+    ],
+  },
+  all: {
+    name: '📋 All Columns',
+    columns: EXPORT_COLUMNS.map((c) => c.id),
+  },
+};
+
 interface AdminDashboardClientProps {
   orders: Order[];
   reviews: Review[];
@@ -98,6 +246,108 @@ export default function AdminDashboardClient({ orders: initialOrders, reviews: i
   }, [searchQuery, statusFilter, paymentFilter, paymentStatusFilter, startDate, endDate]);
   const [updating, setUpdating] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [selectedColumnIds, setSelectedColumnIds] = useState<string[]>(() => {
+    return EXPORT_COLUMNS.map(c => c.id);
+  });
+  const [showExportModal, setShowExportModal] = useState(false);
+
+  // Load saved column preferences from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('admin_export_columns');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const validIds = parsed.filter((id: string) => EXPORT_COLUMNS.some((col) => col.id === id));
+          if (validIds.length > 0) {
+            setSelectedColumnIds(validIds);
+          }
+        }
+      }
+    } catch (e) {
+      // Ignore localStorage read errors
+    }
+  }, []);
+
+  const handleToggleColumn = (columnId: string) => {
+    setSelectedColumnIds((prev) => {
+      const updated = prev.includes(columnId)
+        ? prev.filter((id) => id !== columnId)
+        : [...prev, columnId];
+      try {
+        localStorage.setItem('admin_export_columns', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+  };
+
+  const handleApplyPreset = (presetKey: keyof typeof PRESETS) => {
+    const cols = PRESETS[presetKey].columns;
+    setSelectedColumnIds(cols);
+    try {
+      localStorage.setItem('admin_export_columns', JSON.stringify(cols));
+    } catch (e) {}
+  };
+
+  const handleSelectAllColumns = () => {
+    const allCols = EXPORT_COLUMNS.map((c) => c.id);
+    setSelectedColumnIds(allCols);
+    try {
+      localStorage.setItem('admin_export_columns', JSON.stringify(allCols));
+    } catch (e) {}
+  };
+
+  const handleDeselectAllColumns = () => {
+    setSelectedColumnIds([]);
+    try {
+      localStorage.setItem('admin_export_columns', JSON.stringify([]));
+    } catch (e) {}
+  };
+
+  const exportToCSV = (ordersToExport: Order[], columnIds: string[]) => {
+    if (!ordersToExport || ordersToExport.length === 0) {
+      alert('No orders available to export for the active filters.');
+      return;
+    }
+
+    const selectedCols = EXPORT_COLUMNS.filter((col) => columnIds.includes(col.id));
+    if (selectedCols.length === 0) {
+      alert('Please select at least one column to export.');
+      setShowExportModal(true);
+      return;
+    }
+
+    // Header row
+    const headerRow = selectedCols.map((c) => `"${c.label.replace(/"/g, '""')}"`).join(',');
+
+    // Data rows
+    const dataRows = ordersToExport.map((order) => {
+      return selectedCols
+        .map((col) => {
+          const val = col.getValue(order);
+          const strVal = String(val ?? '');
+          return `"${strVal.replace(/"/g, '""')}"`;
+        })
+        .join(',');
+    });
+
+    const csvContent = '\uFEFF' + [headerRow, ...dataRows].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    const today = new Date().toISOString().split('T')[0];
+    const isFiltered = ordersToExport.length !== orders.length;
+    link.setAttribute('href', url);
+    link.setAttribute(
+      'download',
+      `xcosmetics_orders_${isFiltered ? 'filtered_' : ''}${today}.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   const supabase = createClient();
 
@@ -406,9 +656,32 @@ ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
         <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: '24px' }}>
           {/* Orders */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <h2 className="font-semibold text-gray-700" style={{ marginBottom: '8px' }}>
-              Orders ({filteredOrders.length})
-            </h2>
+            <div className="flex flex-wrap items-center justify-between gap-3" style={{ marginBottom: '8px' }}>
+              <h2 className="font-bold text-gray-800 text-lg">
+                Orders ({filteredOrders.length})
+              </h2>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowExportModal(true)}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 px-3 py-2 rounded-lg transition-colors shadow-2xs cursor-pointer"
+                  title="Customize CSV Export Columns"
+                >
+                  <SlidersHorizontal size={14} className="text-gray-500" />
+                  <span>Columns ({selectedColumnIds.length}/{EXPORT_COLUMNS.length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => exportToCSV(filteredOrders, selectedColumnIds)}
+                  disabled={filteredOrders.length === 0}
+                  className="flex items-center gap-1.5 text-xs font-bold text-white bg-pink-500 hover:bg-pink-600 disabled:opacity-50 disabled:cursor-not-allowed px-3.5 py-2 rounded-lg transition-colors shadow-sm cursor-pointer"
+                  title="Download CSV of visible/filtered orders"
+                >
+                  <Download size={15} />
+                  <span>Download CSV ({filteredOrders.length})</span>
+                </button>
+              </div>
+            </div>
             {filteredOrders.length === 0 ? (
               <div className="bg-white rounded-xl text-center text-gray-500" style={{ padding: '40px 32px' }}>
                 No orders found
@@ -892,17 +1165,155 @@ ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
               <button
                 onClick={() => setDeletingReviewId(null)}
                 disabled={updating}
-                className="px-4 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition-colors"
+                className="px-4 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDeleteReview}
                 disabled={updating}
-                className="px-4 py-2 bg-red-500 text-white font-medium hover:bg-red-600 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+                className="px-4 py-2 bg-red-500 text-white font-medium hover:bg-red-600 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 cursor-pointer"
               >
                 {updating ? 'Deleting...' : 'Delete'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CSV Columns Customization Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full p-6 max-h-[90vh] flex flex-col relative animate-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between pb-4 border-b border-gray-100">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Download size={20} className="text-pink-500" />
+                  <h3 className="text-lg font-bold text-gray-900">Customize CSV Export</h3>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Choose the columns and data fields to include in your downloaded spreadsheet.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Presets Bar */}
+            <div className="py-3.5 border-b border-gray-100 bg-gray-50/60 -mx-6 px-6">
+              <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">
+                Quick Presets
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleApplyPreset('courier')}
+                  className="text-xs font-semibold bg-white hover:bg-pink-50 hover:text-pink-600 hover:border-pink-300 border border-gray-200 px-3 py-1.5 rounded-lg transition-colors shadow-2xs cursor-pointer"
+                >
+                  🚚 Courier Label
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleApplyPreset('accounting')}
+                  className="text-xs font-semibold bg-white hover:bg-pink-50 hover:text-pink-600 hover:border-pink-300 border border-gray-200 px-3 py-1.5 rounded-lg transition-colors shadow-2xs cursor-pointer"
+                >
+                  📊 Accounting
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleApplyPreset('all')}
+                  className="text-xs font-semibold bg-white hover:bg-pink-50 hover:text-pink-600 hover:border-pink-300 border border-gray-200 px-3 py-1.5 rounded-lg transition-colors shadow-2xs cursor-pointer"
+                >
+                  📋 All Columns
+                </button>
+                <div className="h-4 w-px bg-gray-300 mx-1 hidden sm:block" />
+                <button
+                  type="button"
+                  onClick={handleSelectAllColumns}
+                  className="text-xs font-bold text-pink-600 hover:text-pink-700 px-1 py-1 cursor-pointer"
+                >
+                  Select All
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeselectAllColumns}
+                  className="text-xs font-bold text-gray-500 hover:text-gray-700 px-1 py-1 cursor-pointer"
+                >
+                  Clear All
+                </button>
+              </div>
+            </div>
+
+            {/* Column Checkboxes (Scrollable) */}
+            <div className="flex-1 overflow-y-auto py-4 space-y-4 pr-1">
+              {(['Customer', 'Order', 'Shipping', 'Financial'] as const).map((category) => {
+                const categoryCols = EXPORT_COLUMNS.filter((c) => c.category === category);
+                if (categoryCols.length === 0) return null;
+
+                return (
+                  <div key={category} className="space-y-2">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                      {category} Fields
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {categoryCols.map((col) => {
+                        const isChecked = selectedColumnIds.includes(col.id);
+                        return (
+                          <div
+                            key={col.id}
+                            onClick={() => handleToggleColumn(col.id)}
+                            className={`flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-all select-none ${
+                              isChecked
+                                ? 'bg-pink-50/70 border-pink-300 text-gray-900 shadow-2xs'
+                                : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            {isChecked ? (
+                              <CheckSquare size={17} className="text-pink-600 flex-shrink-0" />
+                            ) : (
+                              <Square size={17} className="text-gray-400 flex-shrink-0" />
+                            )}
+                            <span className="text-xs font-medium">{col.label}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <span className="text-xs text-gray-500 font-medium text-center sm:text-left">
+                <strong>{selectedColumnIds.length}</strong> of {EXPORT_COLUMNS.length} columns selected • <strong>{filteredOrders.length}</strong> orders to export
+              </span>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setShowExportModal(false)}
+                  className="flex-1 sm:flex-none px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowExportModal(false);
+                    exportToCSV(filteredOrders, selectedColumnIds);
+                  }}
+                  disabled={selectedColumnIds.length === 0 || filteredOrders.length === 0}
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 bg-pink-500 hover:bg-pink-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg shadow-sm transition-colors cursor-pointer"
+                >
+                  <Download size={14} />
+                  Export CSV Now
+                </button>
+              </div>
             </div>
           </div>
         </div>
