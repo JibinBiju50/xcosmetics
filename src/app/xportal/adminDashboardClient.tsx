@@ -278,6 +278,7 @@ export default function AdminDashboardClient({ orders: initialOrders, reviews: i
   const [savingProduct, setSavingProduct] = useState(false);
   const [uploadingMainImage, setUploadingMainImage] = useState(false);
   const [uploadingGalleryImage, setUploadingGalleryImage] = useState(false);
+  const [uploadingGalleryCount, setUploadingGalleryCount] = useState<number>(0);
   const [togglingStockId, setTogglingStockId] = useState<string | null>(null);
 
   const filteredProducts = products.filter((prod) => {
@@ -384,6 +385,69 @@ export default function AdminDashboardClient({ orders: initialOrders, reviews: i
       } else {
         setUploadingMainImage(false);
       }
+    }
+  };
+
+  const handleMultipleGalleryUpload = async (fileList: FileList) => {
+    if (!fileList || fileList.length === 0) return;
+
+    const files = Array.from(fileList);
+    // Validate all chosen files
+    const validFiles = files.filter((f) => {
+      if (!f.type.startsWith('image/')) {
+        alert(`Skipping "${f.name}": Only image files (JPEG, PNG, WebP, GIF) are allowed.`);
+        return false;
+      }
+      if (f.size > 10 * 1024 * 1024) {
+        alert(`Skipping "${f.name}": File exceeds the 10MB limit.`);
+        return false;
+      }
+      return true;
+    });
+
+    if (validFiles.length === 0) return;
+
+    setUploadingGalleryImage(true);
+    setUploadingGalleryCount(validFiles.length);
+
+    try {
+      const uploadPromises = validFiles.map(async (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        const data = await res.json();
+        if (res.ok && data.url) {
+          return data.url as string;
+        } else {
+          console.error(`Failed to upload ${file.name}:`, data.error);
+          return null;
+        }
+      });
+
+      const results = await Promise.all(uploadPromises);
+      const successfulUrls = results.filter((url): url is string => Boolean(url));
+
+      if (successfulUrls.length > 0) {
+        setProductForm((prev) => ({
+          ...prev,
+          images: [...prev.images, ...successfulUrls],
+        }));
+      }
+
+      if (successfulUrls.length < validFiles.length) {
+        alert(
+          `Uploaded ${successfulUrls.length} of ${validFiles.length} photos. Some files failed to upload.`
+        );
+      }
+    } catch (err) {
+      console.error('Multiple image upload error:', err);
+      alert('Network error while uploading gallery images.');
+    } finally {
+      setUploadingGalleryImage(false);
+      setUploadingGalleryCount(0);
     }
   };
 
@@ -2104,11 +2168,12 @@ ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
                     <input
                       type="file"
                       id="gallery-image-upload"
+                      multiple
                       accept="image/png,image/jpeg,image/webp,image/gif"
                       className="hidden"
                       onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleFileUpload(file, true);
+                        const files = e.target.files;
+                        if (files && files.length > 0) handleMultipleGalleryUpload(files);
                         e.target.value = '';
                       }}
                     />
@@ -2117,15 +2182,20 @@ ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
                       className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition ${
                         uploadingGalleryImage
                           ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                          : 'bg-white hover:bg-pink-50 text-pink-600 border border-pink-200'
+                          : 'bg-white hover:bg-pink-50 text-pink-600 border border-pink-200 shadow-2xs'
                       }`}
                     >
                       {uploadingGalleryImage ? (
-                        <Loader2 size={13} className="animate-spin" />
+                        <>
+                          <Loader2 size={13} className="animate-spin text-pink-500" />
+                          <span>Uploading {uploadingGalleryCount} photos...</span>
+                        </>
                       ) : (
-                        <UploadCloud size={13} />
+                        <>
+                          <UploadCloud size={13} />
+                          <span>+ Upload Gallery Photos (Multiple)</span>
+                        </>
                       )}
-                      <span>+ Upload Gallery Photo</span>
                     </label>
                   </div>
                 </div>
