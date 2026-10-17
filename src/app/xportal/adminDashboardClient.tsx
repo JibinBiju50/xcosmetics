@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
+import Image from 'next/image';
+import { Product } from '@/types';
 import {
   Package,
   LogOut,
@@ -29,6 +31,15 @@ import {
   SlidersHorizontal,
   CheckSquare,
   Square,
+  Plus,
+  UploadCloud,
+  ExternalLink,
+  Layers,
+  Tag,
+  Eye,
+  EyeOff,
+  Image as ImageIcon,
+  Loader2,
 } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
 
@@ -214,17 +225,296 @@ const PRESETS = {
 interface AdminDashboardClientProps {
   orders: Order[];
   reviews: Review[];
-  products?: { id: string; name: string }[];
+  products?: Product[];
 }
 
-export default function AdminDashboardClient({ orders: initialOrders, reviews: initialReviews, products = [] }: AdminDashboardClientProps) {
+interface ProductFormData {
+  name: string;
+  slug: string;
+  category: 'skincare' | 'haircare' | 'lipcare' | 'combo';
+  description: string;
+  benefits: string[];
+  usage: string;
+  original_price: number | '';
+  offer_price: number | '';
+  image_url: string;
+  images: string[];
+  is_combo: boolean;
+  in_stock: boolean;
+}
+
+const defaultProductForm: ProductFormData = {
+  name: '',
+  slug: '',
+  category: 'skincare',
+  description: '',
+  benefits: [''],
+  usage: '',
+  original_price: '',
+  offer_price: '',
+  image_url: '',
+  images: [],
+  is_combo: false,
+  in_stock: true,
+};
+
+export default function AdminDashboardClient({ orders: initialOrders, reviews: initialReviews, products: initialProducts = [] }: AdminDashboardClientProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'orders' | 'reviews'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'reviews' | 'products'>('orders');
   const [reviews, setReviews] = useState<Review[]>(initialReviews);
   const [reviewProductFilter, setReviewProductFilter] = useState<string>('all');
   const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
   const [editingReviewData, setEditingReviewData] = useState<Partial<Review>>({});
   const [deletingReviewId, setDeletingReviewId] = useState<string | null>(null);
+
+  // Products Management State
+  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [productSearch, setProductSearch] = useState('');
+  const [productCategoryFilter, setProductCategoryFilter] = useState('all');
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [productForm, setProductForm] = useState<ProductFormData>(defaultProductForm);
+  const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
+  const [savingProduct, setSavingProduct] = useState(false);
+  const [uploadingMainImage, setUploadingMainImage] = useState(false);
+  const [uploadingGalleryImage, setUploadingGalleryImage] = useState(false);
+  const [togglingStockId, setTogglingStockId] = useState<string | null>(null);
+
+  const filteredProducts = products.filter((prod) => {
+    const matchesSearch =
+      productSearch.trim() === '' ||
+      prod.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+      prod.slug.toLowerCase().includes(productSearch.toLowerCase()) ||
+      prod.category.toLowerCase().includes(productSearch.toLowerCase());
+    const matchesCategory =
+      productCategoryFilter === 'all' || prod.category === productCategoryFilter;
+    return matchesSearch && matchesCategory;
+  });
+
+  const slugify = (text: string) =>
+    text
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)+/g, '');
+
+  const handleNameChange = (name: string) => {
+    setProductForm((prev) => ({
+      ...prev,
+      name,
+      slug: !editingProductId ? slugify(name) : prev.slug,
+    }));
+  };
+
+  const handleOpenCreateProduct = () => {
+    setEditingProductId(null);
+    setProductForm(defaultProductForm);
+    setIsProductModalOpen(true);
+  };
+
+  const handleOpenEditProduct = (prod: Product) => {
+    setEditingProductId(prod.id);
+    setProductForm({
+      name: prod.name,
+      slug: prod.slug,
+      category: prod.category,
+      description: prod.description || '',
+      benefits: prod.benefits && prod.benefits.length > 0 ? [...prod.benefits] : [''],
+      usage: prod.usage || '',
+      original_price: prod.original_price,
+      offer_price: prod.offer_price,
+      image_url: prod.image_url || '',
+      images: prod.images ? [...prod.images] : [],
+      is_combo: Boolean(prod.is_combo),
+      in_stock: Boolean(prod.in_stock),
+    });
+    setIsProductModalOpen(true);
+  };
+
+  const handleFileUpload = async (file: File, isGallery = false) => {
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file (JPEG, PNG, WebP, GIF)');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Image size exceeds 10MB limit. Please choose a smaller image.');
+      return;
+    }
+
+    if (isGallery) {
+      setUploadingGalleryImage(true);
+    } else {
+      setUploadingMainImage(true);
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (res.ok && data.url) {
+        if (isGallery) {
+          setProductForm((prev) => ({
+            ...prev,
+            images: [...prev.images, data.url],
+          }));
+        } else {
+          setProductForm((prev) => ({
+            ...prev,
+            image_url: data.url,
+          }));
+        }
+      } else {
+        alert(data.error || 'Failed to upload image. Please try again.');
+      }
+    } catch (err) {
+      console.error('Image upload failed:', err);
+      alert('Network error while uploading image.');
+    } finally {
+      if (isGallery) {
+        setUploadingGalleryImage(false);
+      } else {
+        setUploadingMainImage(false);
+      }
+    }
+  };
+
+  const handleToggleStock = async (product: Product) => {
+    setTogglingStockId(product.id);
+    const newStock = !product.in_stock;
+
+    try {
+      const res = await fetch(`/api/products/${product.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ in_stock: newStock }),
+      });
+
+      if (res.ok) {
+        setProducts((prev) =>
+          prev.map((p) => (p.id === product.id ? { ...p, in_stock: newStock } : p))
+        );
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to update stock status');
+      }
+    } catch (err) {
+      alert('Error updating stock status');
+    } finally {
+      setTogglingStockId(null);
+    }
+  };
+
+  const handleSaveProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!productForm.name.trim()) {
+      alert('Please enter a product name');
+      return;
+    }
+    if (!productForm.slug.trim()) {
+      alert('Please enter a Product URL Link (slug)');
+      return;
+    }
+    if (productForm.original_price === '' || productForm.offer_price === '') {
+      alert('Please enter both Original Price (MRP) and Offer Price');
+      return;
+    }
+    if (!productForm.image_url.trim()) {
+      alert('Please upload or provide a main display image for this product');
+      return;
+    }
+
+    setSavingProduct(true);
+
+    try {
+      const payload = {
+        name: productForm.name.trim(),
+        slug: slugify(productForm.slug),
+        category: productForm.category,
+        description: productForm.description,
+        benefits: productForm.benefits.filter((b) => b.trim().length > 0),
+        usage: productForm.usage,
+        original_price: Number(productForm.original_price),
+        offer_price: Number(productForm.offer_price),
+        image_url: productForm.image_url.trim(),
+        images: productForm.images.filter((img) => img.trim().length > 0),
+        is_combo: productForm.is_combo,
+        in_stock: productForm.in_stock,
+      };
+
+      if (editingProductId) {
+        const res = await fetch(`/api/products/${editingProductId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+        if (res.ok && data.product) {
+          setProducts((prev) =>
+            prev.map((p) => (p.id === editingProductId ? data.product : p))
+          );
+          setIsProductModalOpen(false);
+          setEditingProductId(null);
+        } else {
+          alert(data.error || 'Failed to update product');
+        }
+      } else {
+        const res = await fetch('/api/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+        if (res.ok && data.product) {
+          setProducts((prev) => [data.product, ...prev]);
+          setIsProductModalOpen(false);
+          setEditingProductId(null);
+        } else {
+          alert(data.error || 'Failed to create product');
+        }
+      }
+    } catch (err) {
+      console.error('Error saving product:', err);
+      alert('Network error while saving product');
+    } finally {
+      setSavingProduct(false);
+    }
+  };
+
+  const handleDeleteProduct = async () => {
+    if (!deletingProduct) return;
+    setSavingProduct(true);
+
+    try {
+      const res = await fetch(`/api/products/${deletingProduct.id}`, {
+        method: 'DELETE',
+      });
+
+      if (res.ok) {
+        setProducts((prev) => prev.filter((p) => p.id !== deletingProduct.id));
+        setDeletingProduct(null);
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to delete product');
+      }
+    } catch (err) {
+      alert('Error deleting product');
+    } finally {
+      setSavingProduct(false);
+    }
+  };
+
   const [orders, setOrders] = useState(initialOrders);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -547,6 +837,13 @@ ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
             >
               Reviews Management
               {activeTab === 'reviews' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-pink-500 rounded-t-full" />}
+            </button>
+            <button
+              onClick={() => setActiveTab('products')}
+              className={`pb-4 pt-2 font-medium text-sm transition-colors relative ${activeTab === 'products' ? 'text-pink-600' : 'text-gray-500 hover:text-gray-800'}`}
+            >
+              Products Management ({products.length})
+              {activeTab === 'products' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-pink-500 rounded-t-full" />}
             </button>
           </div>
         </div>
@@ -1059,7 +1356,7 @@ ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
           </div>
         </div>
           </>
-        ) : (
+        ) : activeTab === 'reviews' ? (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h2 className="font-semibold text-gray-700">Reviews ({reviews.length})</h2>
@@ -1143,6 +1440,231 @@ ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
                           </div>
                         </>
                       )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Products Tab Content */
+          <div className="space-y-6">
+            {/* Header & Controls */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-xl shadow-sm">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <Layers className="text-pink-500" size={22} />
+                  Products & Catalog ({filteredProducts.length})
+                </h2>
+                <p className="text-xs text-gray-500 mt-1">
+                  Manage catalog details, pricing, direct device image uploads, and stock availability.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                  <input
+                    type="text"
+                    placeholder="Search name, slug, category..."
+                    value={productSearch}
+                    onChange={(e) => setProductSearch(e.target.value)}
+                    className="w-full sm:w-60 pl-9 pr-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-pink-500 outline-none"
+                  />
+                </div>
+
+                {/* Category Filter */}
+                <div className="flex items-center gap-2">
+                  <Filter size={18} className="text-gray-400 hidden sm:block" />
+                  <select
+                    value={productCategoryFilter}
+                    onChange={(e) => setProductCategoryFilter(e.target.value)}
+                    className="border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-pink-500 outline-none bg-white cursor-pointer"
+                  >
+                    <option value="all">All Categories</option>
+                    <option value="skincare">Skincare</option>
+                    <option value="haircare">Haircare</option>
+                    <option value="lipcare">Lipcare</option>
+                    <option value="combo">Combo Offers</option>
+                  </select>
+                </div>
+
+                {/* Add Product Button */}
+                <button
+                  onClick={handleOpenCreateProduct}
+                  className="flex items-center justify-center gap-2 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-medium px-4 py-2 rounded-lg text-sm shadow-sm transition-all hover:shadow cursor-pointer"
+                >
+                  <Plus size={18} />
+                  Add Product
+                </button>
+              </div>
+            </div>
+
+            {/* Products Grid */}
+            {filteredProducts.length === 0 ? (
+              <div className="bg-white rounded-xl text-center text-gray-500 py-16 px-4 shadow-sm">
+                <Package size={52} className="mx-auto text-gray-300 mb-3" />
+                <h3 className="text-base font-semibold text-gray-700">No products found</h3>
+                <p className="text-sm text-gray-400 mt-1 mb-5">
+                  {productSearch || productCategoryFilter !== 'all'
+                    ? 'Try clearing your search query or category filter.'
+                    : 'Get started by creating your first catalog product.'}
+                </p>
+                <button
+                  onClick={handleOpenCreateProduct}
+                  className="inline-flex items-center gap-2 bg-pink-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-pink-600 transition cursor-pointer"
+                >
+                  <Plus size={16} />
+                  Add First Product
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {filteredProducts.map((prod) => {
+                  const discount =
+                    prod.original_price > prod.offer_price
+                      ? Math.round(
+                          ((prod.original_price - prod.offer_price) /
+                            prod.original_price) *
+                            100
+                        )
+                      : 0;
+
+                  return (
+                    <div
+                      key={prod.id}
+                      className="bg-white rounded-xl shadow-sm hover:shadow-md transition border border-gray-100 flex flex-col overflow-hidden"
+                    >
+                      {/* Image Preview Container */}
+                      <div className="relative aspect-square w-full bg-gray-100 overflow-hidden group">
+                        {prod.image_url ? (
+                          <Image
+                            src={prod.image_url}
+                            alt={prod.name}
+                            fill
+                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                            className="object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center text-gray-300">
+                            <ImageIcon size={40} />
+                            <span className="text-xs mt-1">No Image</span>
+                          </div>
+                        )}
+
+                        {/* Category Badge */}
+                        <span className="absolute top-2.5 left-2.5 bg-black/60 backdrop-blur-xs text-white text-[11px] font-semibold px-2 py-0.5 rounded-full capitalize">
+                          {prod.category}
+                        </span>
+
+                        {/* Discount Badge */}
+                        {discount > 0 && (
+                          <span className="absolute top-2.5 right-2.5 bg-rose-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-full shadow-xs">
+                            {discount}% OFF
+                          </span>
+                        )}
+
+                        {/* Stock Overlay Tag */}
+                        <div className="absolute bottom-2.5 left-2.5">
+                          <span
+                            className={`text-[11px] font-bold px-2 py-0.5 rounded-md shadow-xs ${
+                              prod.in_stock
+                                ? 'bg-emerald-500 text-white'
+                                : 'bg-red-500 text-white'
+                            }`}
+                          >
+                            {prod.in_stock ? '● In Stock' : '✕ Out of Stock'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Card Info */}
+                      <div className="p-4 flex-1 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-start justify-between gap-1 mb-1">
+                            <h3
+                              className="font-bold text-gray-900 text-sm line-clamp-1"
+                              title={prod.name}
+                            >
+                              {prod.name}
+                            </h3>
+                            {prod.is_combo && (
+                              <span className="bg-purple-100 text-purple-700 text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0">
+                                Combo
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Product URL Link (Slug) */}
+                          <a
+                            href={`/products/${prod.slug}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-[11px] text-pink-600 hover:text-pink-700 hover:underline truncate max-w-full mb-3"
+                            title={`View /products/${prod.slug}`}
+                          >
+                            <ExternalLink size={11} className="shrink-0" />
+                            <span className="truncate">/{prod.slug}</span>
+                          </a>
+
+                          {/* Pricing */}
+                          <div className="flex items-baseline gap-2 mb-3">
+                            <span className="text-base font-extrabold text-gray-900">
+                              {formatPrice(prod.offer_price)}
+                            </span>
+                            {prod.original_price > prod.offer_price && (
+                              <span className="text-xs text-gray-400 line-through">
+                                {formatPrice(prod.original_price)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
+                          {/* In-Stock Toggle Button */}
+                          <button
+                            type="button"
+                            onClick={() => handleToggleStock(prod)}
+                            disabled={togglingStockId === prod.id}
+                            className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                              prod.in_stock
+                                ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
+                            } disabled:opacity-50`}
+                            title="Click to toggle availability"
+                          >
+                            {togglingStockId === prod.id ? (
+                              <Loader2 size={13} className="animate-spin" />
+                            ) : prod.in_stock ? (
+                              <Eye size={13} />
+                            ) : (
+                              <EyeOff size={13} />
+                            )}
+                            <span>{prod.in_stock ? 'In Stock' : 'Out of Stock'}</span>
+                          </button>
+
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditProduct(prod)}
+                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                              title="Edit Product"
+                            >
+                              <Edit2 size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeletingProduct(prod)}
+                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                              title="Delete Product"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   );
                 })}
@@ -1314,6 +1836,505 @@ ${selectedOrder.items.map(i => `- ${i.name} x${i.quantity}`).join('\n')}`;
                   Export CSV Now
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Product Create / Edit Modal */}
+      {isProductModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col relative animate-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-pink-100 text-pink-600 flex items-center justify-center">
+                  <Tag size={18} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">
+                    {editingProductId ? 'Edit Product' : 'Add New Product'}
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    {editingProductId
+                      ? 'Update pricing, images, descriptions, or availability'
+                      : 'Add a new item to your storefront catalog'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsProductModalOpen(false)}
+                className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Form Content */}
+            <form onSubmit={handleSaveProduct} className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+              {/* Product Name & Slug */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                    Product Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={productForm.name}
+                    onChange={(e) => handleNameChange(e.target.value)}
+                    placeholder="e.g. Pure Glow Face Cream"
+                    className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-pink-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                    Product URL Link (Slug) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={productForm.slug}
+                    onChange={(e) =>
+                      setProductForm((prev) => ({ ...prev, slug: e.target.value }))
+                    }
+                    placeholder="e.g. pure-glow-face-cream"
+                    className="w-full px-3 py-2 border rounded-lg text-sm font-mono text-gray-700 focus:ring-2 focus:ring-pink-500 outline-none"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    Web address: /products/{slugify(productForm.slug || 'product-link')}
+                  </p>
+                </div>
+              </div>
+
+              {/* Category, Combo, and Stock Status */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-gray-50 p-3.5 rounded-xl border border-gray-100">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                    Category *
+                  </label>
+                  <select
+                    value={productForm.category}
+                    onChange={(e) =>
+                      setProductForm((prev) => ({
+                        ...prev,
+                        category: e.target.value as any,
+                      }))
+                    }
+                    className="w-full px-3 py-2 border bg-white rounded-lg text-sm focus:ring-2 focus:ring-pink-500 outline-none cursor-pointer"
+                  >
+                    <option value="skincare">Skincare</option>
+                    <option value="haircare">Haircare</option>
+                    <option value="lipcare">Lipcare</option>
+                    <option value="combo">Combo</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col justify-center">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                    Is Combo Deal?
+                  </label>
+                  <label className="inline-flex items-center gap-2 cursor-pointer mt-1">
+                    <input
+                      type="checkbox"
+                      checked={productForm.is_combo}
+                      onChange={(e) =>
+                        setProductForm((prev) => ({
+                          ...prev,
+                          is_combo: e.target.checked,
+                          category: e.target.checked ? 'combo' : prev.category,
+                        }))
+                      }
+                      className="w-4 h-4 text-pink-600 rounded focus:ring-pink-500"
+                    />
+                    <span className="text-xs text-gray-700 font-medium">Combo Package</span>
+                  </label>
+                </div>
+
+                <div className="flex flex-col justify-center">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                    Stock Status
+                  </label>
+                  <label className="inline-flex items-center gap-2 cursor-pointer mt-1">
+                    <input
+                      type="checkbox"
+                      checked={productForm.in_stock}
+                      onChange={(e) =>
+                        setProductForm((prev) => ({
+                          ...prev,
+                          in_stock: e.target.checked,
+                        }))
+                      }
+                      className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
+                    />
+                    <span className="text-xs font-semibold text-gray-700">
+                      {productForm.in_stock ? '🟢 In Stock (Available)' : '🔴 Out of Stock'}
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Pricing Section */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                    Original Price / MRP (₹) *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    required
+                    value={productForm.original_price}
+                    onChange={(e) =>
+                      setProductForm((prev) => ({
+                        ...prev,
+                        original_price: e.target.value === '' ? '' : Number(e.target.value),
+                      }))
+                    }
+                    placeholder="e.g. 899"
+                    className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-pink-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                    Offer / Sale Price (₹) *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    required
+                    value={productForm.offer_price}
+                    onChange={(e) =>
+                      setProductForm((prev) => ({
+                        ...prev,
+                        offer_price: e.target.value === '' ? '' : Number(e.target.value),
+                      }))
+                    }
+                    placeholder="e.g. 749"
+                    className="w-full px-3 py-2 border rounded-lg text-sm font-bold text-pink-600 focus:ring-2 focus:ring-pink-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Main Display Image (Direct File Upload & URL) */}
+              <div className="border border-dashed border-gray-200 rounded-xl p-4 bg-gray-50/70">
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
+                  Main Display Image *
+                </label>
+
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  {productForm.image_url ? (
+                    <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-gray-200 shrink-0 bg-white shadow-2xs group">
+                      <Image
+                        src={productForm.image_url}
+                        alt="Main preview"
+                        fill
+                        className="object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setProductForm((prev) => ({ ...prev, image_url: '' }))
+                        }
+                        className="absolute inset-0 bg-black/50 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+                        title="Remove image"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="w-24 h-24 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 shrink-0 bg-white">
+                      <ImageIcon size={26} />
+                      <span className="text-[10px] mt-1 font-medium">No Image</span>
+                    </div>
+                  )}
+
+                  <div className="flex-1 w-full space-y-2">
+                    {/* Device Upload Button */}
+                    <div>
+                      <input
+                        type="file"
+                        id="main-image-upload"
+                        accept="image/png,image/jpeg,image/webp,image/gif"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleFileUpload(file, false);
+                          e.target.value = '';
+                        }}
+                      />
+                      <label
+                        htmlFor="main-image-upload"
+                        className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold cursor-pointer transition shadow-2xs ${
+                          uploadingMainImage
+                            ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                            : 'bg-white hover:bg-pink-50 hover:text-pink-600 border border-gray-300 text-gray-700'
+                        }`}
+                      >
+                        {uploadingMainImage ? (
+                          <>
+                            <Loader2 size={15} className="animate-spin text-pink-500" />
+                            Uploading to Storage...
+                          </>
+                        ) : (
+                          <>
+                            <UploadCloud size={15} className="text-pink-500" />
+                            Upload from Device (Phone / PC)
+                          </>
+                        )}
+                      </label>
+                      <span className="text-[11px] text-gray-400 ml-2">Max 10MB (PNG, JPG, WebP)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Additional Gallery Images */}
+              <div className="border border-dashed border-gray-200 rounded-xl p-4 bg-gray-50/70">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    Additional Gallery Images ({productForm.images.length})
+                  </label>
+                  <div>
+                    <input
+                      type="file"
+                      id="gallery-image-upload"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFileUpload(file, true);
+                        e.target.value = '';
+                      }}
+                    />
+                    <label
+                      htmlFor="gallery-image-upload"
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition ${
+                        uploadingGalleryImage
+                          ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                          : 'bg-white hover:bg-pink-50 text-pink-600 border border-pink-200'
+                      }`}
+                    >
+                      {uploadingGalleryImage ? (
+                        <Loader2 size={13} className="animate-spin" />
+                      ) : (
+                        <UploadCloud size={13} />
+                      )}
+                      <span>+ Upload Gallery Photo</span>
+                    </label>
+                  </div>
+                </div>
+
+                {productForm.images.length === 0 ? (
+                  <p className="text-xs text-gray-400 italic">
+                    No extra gallery images uploaded yet.
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-2.5 mt-2">
+                    {productForm.images.map((imgUrl, idx) => (
+                      <div
+                        key={idx}
+                        className="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-200 bg-white group shadow-2xs"
+                      >
+                        <Image
+                          src={imgUrl}
+                          alt={`Gallery ${idx + 1}`}
+                          fill
+                          className="object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setProductForm((prev) => ({
+                              ...prev,
+                              images: prev.images.filter((_, i) => i !== idx),
+                            }))
+                          }
+                          className="absolute inset-0 bg-red-600/70 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer"
+                          title="Remove image"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  Product Description
+                </label>
+                <textarea
+                  rows={3}
+                  value={productForm.description}
+                  onChange={(e) =>
+                    setProductForm((prev) => ({
+                      ...prev,
+                      description: e.target.value,
+                    }))
+                  }
+                  placeholder="Describe your product, skin benefits, texture, key ingredients..."
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-pink-500 outline-none"
+                />
+              </div>
+
+              {/* Key Benefits List */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    Key Benefits (Bullet points)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setProductForm((prev) => ({
+                        ...prev,
+                        benefits: [...prev.benefits, ''],
+                      }))
+                    }
+                    className="text-xs text-pink-600 hover:text-pink-700 font-bold cursor-pointer"
+                  >
+                    + Add Bullet
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {productForm.benefits.map((benefit, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <span className="text-gray-400 text-xs font-bold">•</span>
+                      <input
+                        type="text"
+                        value={benefit}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setProductForm((prev) => {
+                            const next = [...prev.benefits];
+                            next[idx] = val;
+                            return { ...prev, benefits: next };
+                          });
+                        }}
+                        placeholder={`e.g. Clears blemishes and dark spots`}
+                        className="flex-1 px-3 py-1.5 border rounded-lg text-xs focus:ring-2 focus:ring-pink-500 outline-none"
+                      />
+                      {productForm.benefits.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setProductForm((prev) => ({
+                              ...prev,
+                              benefits: prev.benefits.filter((_, i) => i !== idx),
+                            }))
+                          }
+                          className="p-1 text-gray-400 hover:text-red-500 transition cursor-pointer"
+                        >
+                          <X size={15} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* How to Use / Usage */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  How To Use (Usage Directions)
+                </label>
+                <textarea
+                  rows={2}
+                  value={productForm.usage}
+                  onChange={(e) =>
+                    setProductForm((prev) => ({
+                      ...prev,
+                      usage: e.target.value,
+                    }))
+                  }
+                  placeholder="e.g. Gently massage onto cleansed face and neck every morning and evening."
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-pink-500 outline-none"
+                />
+              </div>
+
+              {/* Modal Footer Actions */}
+              <div className="pt-4 border-t border-gray-100 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsProductModalOpen(false)}
+                  disabled={savingProduct}
+                  className="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingProduct}
+                  className="inline-flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white text-xs font-bold rounded-lg shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  {savingProduct ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      Saving Product...
+                    </>
+                  ) : (
+                    <>
+                      <Save size={14} />
+                      {editingProductId ? 'Update Product' : 'Create Product'}
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Product Delete Confirmation Modal */}
+      {deletingProduct && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 text-red-500 mb-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                <AlertTriangle size={20} />
+              </div>
+              <h3 className="text-base font-bold text-gray-900">Delete Product</h3>
+            </div>
+            <p className="text-sm text-gray-600 mb-5 leading-relaxed">
+              Are you sure you want to delete{' '}
+              <strong className="text-gray-900 font-semibold">"{deletingProduct.name}"</strong>?
+              This product will be permanently removed from your catalog and storefront.
+            </p>
+            <div className="flex justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setDeletingProduct(null)}
+                disabled={savingProduct}
+                className="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteProduct}
+                disabled={savingProduct}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-xs"
+              >
+                {savingProduct ? (
+                  <>
+                    <Loader2 size={13} className="animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={13} />
+                    Delete Permanently
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>

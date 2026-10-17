@@ -25,16 +25,18 @@ async function getProduct(slug: string): Promise<Product | null> {
 
   const product = data;
   if (product && product.slug === 'face-cream') {
-    product.image_url = '/images/face_cream_creamx/cream_img1_new.PNG';
-    product.original_price = 899;
-    product.offer_price = 749;
-    product.images = [
-      '/images/face_cream_creamx/cream_img2.JPG',
-      '/images/face_cream_creamx/cream_img3.JPG',
-      '/images/face_cream_creamx/cream_img4.JPG',
-      '/images/face_cream_creamx/cream_img5.PNG'
-    ];
-    product.description = `Clears pimples, acne, dark spots & open pores
+    product.image_url = product.image_url || '/images/face_cream_creamx/cream_img1_new.PNG';
+    product.original_price = product.original_price || 899;
+    product.offer_price = product.offer_price || 749;
+    if (!product.images || product.images.length === 0) {
+      product.images = [
+        '/images/face_cream_creamx/cream_img2.JPG',
+        '/images/face_cream_creamx/cream_img3.JPG',
+        '/images/face_cream_creamx/cream_img4.JPG',
+        '/images/face_cream_creamx/cream_img5.PNG'
+      ];
+    }
+    product.description = product.description || `Clears pimples, acne, dark spots & open pores
 Restores a clear, smooth & glowing complexion
 Enhances skin tone for bright
 Provides a complete skincare solution for daily care
@@ -52,12 +54,14 @@ Our cream has the best solution for,
   }
 
   if (product && product.slug === 'combo-face-cream-offer') {
-    product.image_url = '/images/combo/combo1.PNG';
-    product.original_price = 1699;
-    product.offer_price = 1499;
-    product.images = [
-      '/images/combo/combo2.PNG'
-    ];
+    product.image_url = product.image_url || '/images/combo/combo1.PNG';
+    product.original_price = product.original_price || 1699;
+    product.offer_price = product.offer_price || 1499;
+    if (!product.images || product.images.length === 0) {
+      product.images = [
+        '/images/combo/combo2.PNG'
+      ];
+    }
   }
 
   return product;

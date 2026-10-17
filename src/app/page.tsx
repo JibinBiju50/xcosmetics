@@ -22,28 +22,32 @@ async function getProducts(): Promise<Product[]> {
 
   const products = data || [];
   
-  // Override face cream images
+  // Fallback defaults for initial face cream products if database fields are empty
   const faceCream = products.find(p => p.slug === 'face-cream');
   if (faceCream) {
-    faceCream.image_url = '/images/face_cream_creamx/cream_img1_new.PNG';
-    faceCream.original_price = 899;
-    faceCream.offer_price = 749;
-    faceCream.images = [
-      '/images/face_cream_creamx/cream_img2.JPG',
-      '/images/face_cream_creamx/cream_img3.JPG',
-      '/images/face_cream_creamx/cream_img4.JPG'
-    ];
+    faceCream.image_url = faceCream.image_url || '/images/face_cream_creamx/cream_img1_new.PNG';
+    faceCream.original_price = faceCream.original_price || 899;
+    faceCream.offer_price = faceCream.offer_price || 749;
+    if (!faceCream.images || faceCream.images.length === 0) {
+      faceCream.images = [
+        '/images/face_cream_creamx/cream_img2.JPG',
+        '/images/face_cream_creamx/cream_img3.JPG',
+        '/images/face_cream_creamx/cream_img4.JPG'
+      ];
+    }
   }
 
-  // Override face cream combo images
+  // Fallback defaults for initial combo product if database fields are empty
   const faceCreamCombo = products.find(p => p.slug === 'combo-face-cream-offer');
   if (faceCreamCombo) {
-    faceCreamCombo.image_url = '/images/combo/combo1.PNG';
-    faceCreamCombo.original_price = 1699;
-    faceCreamCombo.offer_price = 1499;
-    faceCreamCombo.images = [
-      '/images/combo/combo2.PNG'
-    ];
+    faceCreamCombo.image_url = faceCreamCombo.image_url || '/images/combo/combo1.PNG';
+    faceCreamCombo.original_price = faceCreamCombo.original_price || 1699;
+    faceCreamCombo.offer_price = faceCreamCombo.offer_price || 1499;
+    if (!faceCreamCombo.images || faceCreamCombo.images.length === 0) {
+      faceCreamCombo.images = [
+        '/images/combo/combo2.PNG'
+      ];
+    }
   }
 
   return products;

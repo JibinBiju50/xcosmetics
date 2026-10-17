@@ -8,7 +8,7 @@ async function getOrders() {
   // Check if user is authenticated
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    redirect('/admin/login');
+    redirect('/xportal/login');
   }
 
   const { data: orders, error: ordersError } = await supabase
@@ -31,7 +31,8 @@ async function getOrders() {
 
   const { data: products, error: productsError } = await supabase
     .from('products')
-    .select('id, name');
+    .select('*')
+    .order('created_at', { ascending: false });
 
   if (productsError) {
     console.error('Error fetching products:', productsError);
